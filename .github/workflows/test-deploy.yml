@@ -1,6 +1,7 @@
 name: Test docs deployment
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
