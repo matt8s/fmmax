@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   deploy:
+    if: vars.FMMAX_DOCS_DEPLOY == 'true'
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     defaults:

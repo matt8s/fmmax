@@ -15,8 +15,7 @@ authors = [
 ]
 
 maintainers = [
-  {name = "Martin Schubert", email = "mfschubert@gmail.com" },
-  {name = "Alec Hammond", email = "alec.m.hammond@gmail.com" },
+  {name = "matt8s"},
 ]
 
 # TODO add gpu channels
@@ -25,6 +24,12 @@ dependencies = [
   "jaxlib",
   "numpy",
 ]
+[project.urls]
+Repository = "https://github.com/matt8s/fmmax"
+Issues = "https://github.com/matt8s/fmmax/issues"
+Documentation = "https://facebookresearch.github.io/fmmax/"
+Upstream = "https://github.com/facebookresearch/fmmax"
+
 [project.optional-dependencies]
 jeig = [
   "jeig",

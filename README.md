@@ -1,10 +1,21 @@
 # FMMAX: Fourier Modal Method with Jax
 
 <a href="https://facebookresearch.github.io/fmmax/"><img src="https://img.shields.io/badge/Docs-blue.svg"/></a>
-![Continuous integration](https://github.com/facebookresearch/fmmax/actions/workflows/build-ci.yml/badge.svg)
+![Continuous integration](https://github.com/matt8s/fmmax/actions/workflows/build-ci.yml/badge.svg)
 ![PyPI version](https://img.shields.io/pypi/v/fmmax)
 
 FMMAX is a an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax). 
+
+## Maintenance status
+
+This is the community-maintenance fork maintained by [@matt8s](https://github.com/matt8s).
+The original [facebookresearch/fmmax](https://github.com/facebookresearch/fmmax)
+repository is archived. Development coordination, bug reports, and pull requests
+for this fork belong in [this repository](https://github.com/matt8s/fmmax).
+
+See [MAINTENANCE.md](MAINTENANCE.md) for provenance, priorities, and handover status.
+Upstream ownership and PyPI publishing access have not been transferred. The
+documentation link and PyPI badge above refer to the existing upstream resources.
 
 The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach [1999 Whittaker, 2012 Liu, 2020 Jin]. This allows certain classes of structures to be modeled with relatively low computational cost.
 
@@ -40,6 +51,14 @@ Batched calculations are supported, and should be used where possible to avoid l
 FMMAX can be installed via pip:
 ```
 pip install fmmax
+```
+
+This installs the existing PyPI distribution. To work on this fork, use:
+
+```sh
+git clone https://github.com/matt8s/fmmax.git
+cd fmmax
+python -m pip install -e ".[dev]"
 ```
 
 For developers requiring a local installation, you will need to first clone this repository and then perform a local install from within the root directory using:
