@@ -12,6 +12,9 @@ Please open new issues and pull requests in `matt8s/fmmax`. When continuing
 upstream work, link the original issue or PR and summarize its current status.
 An open upstream issue is not evidence that a proposed fix is still needed.
 
+Coordinate ownership and publishing arrangements in the
+[maintenance transition issue](https://github.com/matt8s/fmmax/issues/1).
+
 ## Upstream provenance and discovery
 
 - Original source: <https://github.com/facebookresearch/fmmax>
