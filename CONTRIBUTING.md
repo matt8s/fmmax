@@ -18,7 +18,8 @@ credit when adapting upstream or other fork contributions.
 
 ## Development checks
 
-Current CI uses Python 3.10. Install with `python -m pip install -e ".[dev]"`.
+CI retains Python 3.10 / JAX 0.4.38 and adds Python 3.14 / JAX 0.11.2.
+Install with `python -m pip install -e ".[dev]"`.
 Run the relevant checks before submitting:
 
 ```sh

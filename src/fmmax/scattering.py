@@ -286,7 +286,12 @@ def redheffer_star_product(
     force_x64_solve: bool = False,
 ) -> ScatteringMatrix:
     """Compute the Redheffer star product of two scattering matrices."""
-    a_extended = append_layer(a, b.start_layer_solve_result, b.start_layer_thickness)
+    a_extended = append_layer(
+        a,
+        b.start_layer_solve_result,
+        b.start_layer_thickness,
+        force_x64_solve=force_x64_solve,
+    )
     a11, a12, a21, a22 = a_extended.s11, a_extended.s12, a_extended.s21, a_extended.s22
     b11, b12, b21, b22 = b.s11, b.s12, b.s21, b.s22
 

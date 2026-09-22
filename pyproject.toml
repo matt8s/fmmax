@@ -4,7 +4,7 @@ name = "fmmax"
 version = "v0.11.0"
 description = "Fourier modal method with Jax"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 
 keywords = ["fmm", "rcwa", "jax", "optics"] 
@@ -20,8 +20,8 @@ maintainers = [
 
 # TODO add gpu channels
 dependencies = [
-  "jax <= 0.4.38",
-  "jaxlib",
+  "jax >= 0.4.38, <= 0.11.2",
+  "jaxlib >= 0.4.38, <= 0.11.2",
   "numpy",
 ]
 [project.urls]

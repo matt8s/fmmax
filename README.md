@@ -68,6 +68,14 @@ pip install -e ".[dev]"
 
 The `[dev]` modifier specifies optional dependencies for developers which are listed in `pyproject.toml`.
 
+This fork requires Python 3.10 or newer. Its compatibility lanes cover
+Python 3.10 / JAX 0.4.38 and Python 3.14 / JAX 0.11.2, including NumPy 2.
+The latest JAX release requires a newer interpreter than the minimum supported
+by FMMAX; use the Python 3.14 lane when testing the newest dependencies.
+See [cross-solver validation](docs/docs/Numerical_validation.md) for the optional
+S4 and torcwa comparisons, and [analytic materials](docs/docs/Analytic_materials.md)
+for raster-free lamellar Fourier coefficients.
+
 Note: for this to work, it may be necessary to first update your pip installation using e.g. `python3 -m pip install --upgrade pip`.
 
 ## Citing FMMAX

@@ -293,9 +293,9 @@ def _basis_coefficients_circular(
     # Generate candidate coefficients. These will include more coefficients than needed;
     # subsequently we will filter based on magnitude.
     g = onp.arange(-approximate_num_terms // 2, approximate_num_terms // 2 + 1)
-    G1, G2 = onp.meshgrid(g, g, indexing="ij")
-    G1 = G1.flatten()
-    G2 = G2.flatten()
+    grid1, grid2 = onp.meshgrid(g, g, indexing="ij")
+    G1 = grid1.flatten()
+    G2 = grid2.flatten()
 
     # Generate the actual vectors and compute their magnitude.
     vectors = (
@@ -369,13 +369,13 @@ def _basis_coefficients_parallelogramic(
     nu = _solve_quadratic(ku_spacing / kv_spacing)
     nv = _solve_quadratic(kv_spacing / ku_spacing)
 
-    G1, G2 = onp.meshgrid(
+    grid1, grid2 = onp.meshgrid(
         onp.arange(-nu, nu + 1),
         onp.arange(-nv, nv + 1),
         indexing="ij",
     )
-    G1 = G1.flatten()
-    G2 = G2.flatten()
+    G1 = grid1.flatten()
+    G2 = grid2.flatten()
     G = onp.stack([G1, G2], axis=-1)
     # Generate the actual vectors and compute their magnitude.
     vectors = (

@@ -5,6 +5,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import itertools
 import unittest
+from unittest import mock
 
 import jax
 import jax.numpy as jnp
@@ -132,6 +133,51 @@ class InterpolateTest(unittest.TestCase):
 
 
 class EigTest(unittest.TestCase):
+    @parameterized.expand([("float32",), ("complex64",), ("float64",), ("complex128",)])
+    def test_callback_transforms(self, dtype):
+        # A NumPy host function exercises the real callback API on CPU without
+        # reentering JAX's CPU runtime (which can deadlock on some runtimes).
+        matrix = jnp.asarray([[1.0, 0.3], [-0.2, 2.0]], dtype=dtype)
+        if jnp.issubdtype(matrix.dtype, jnp.complexfloating):
+            matrix = matrix + 0.1j * jnp.eye(2, dtype=dtype)
+        offsets = jnp.arange(6, dtype=matrix.real.dtype).reshape(2, 3, 1, 1)
+        matrix = matrix + offsets * jnp.diag(jnp.asarray([0.05, 0.1], dtype=dtype))
+        with mock.patch.object(utils, "_eig_jax_cpu", onp.linalg.eig):
+            for fn in (
+                utils._eig_callback,
+                jax.jit(utils._eig_callback),
+                jax.vmap(utils._eig_callback),
+                jax.jit(jax.vmap(jax.vmap(utils._eig_callback))),
+            ):
+                values, vectors = fn(matrix)
+                self.assertEqual(values.shape, (2, 3, 2))
+                self.assertEqual(vectors.shape, matrix.shape)
+                self.assertEqual(values.dtype, jnp.promote_types(dtype, jnp.complex64))
+                self.assertTrue(onp.all(onp.isfinite(values)))
+                self.assertTrue(onp.all(onp.isfinite(vectors)))
+                onp.testing.assert_allclose(
+                    onp.linalg.norm(vectors, axis=-2), 1, rtol=1e-6
+                )
+                onp.testing.assert_allclose(
+                    matrix @ vectors, vectors * values[..., None, :], atol=1e-6
+                )
+
+    @parameterized.expand([(1.0,), (1.0j,)])
+    def test_callback_eigenvector_gradient(self, direction):
+        def loss(x):
+            matrix = jnp.asarray([[1.0, direction * x], [-0.2, 2.0]], dtype=complex)
+            _, vectors = utils.eig(matrix)
+            return jnp.sum(jnp.abs(vectors[0, :]) ** 2)
+
+        with (
+            mock.patch.object(utils, "_eig_jax_cpu", onp.linalg.eig),
+            mock.patch.object(utils, "_eig", utils._eig_callback),
+        ):
+            derivative = jax.jit(jax.grad(loss))(0.3)
+            for step in (1e-4, 1e-5, 1e-6):
+                expected = (loss(0.3 + step) - loss(0.3 - step)) / (2 * step)
+                onp.testing.assert_allclose(derivative, expected, rtol=1e-6)
+
     def test_no_nan_gradient_with_degenerate_eigenvalues(self):
         matrix = jnp.asarray([[2.0, 0.0, 2.0], [0.0, -2.0, 0.0], [2.0, 0.0, -1.0]])
         eigval_grad = jax.grad(lambda m: jnp.sum(jnp.abs(utils.eig(m)[0])))(matrix)

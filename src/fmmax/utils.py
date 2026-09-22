@@ -142,16 +142,21 @@ def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if jax.devices()[0] == jax.devices("cpu")[0]:
         return jnp.linalg.eig(matrix)
     else:
-        dtype = jnp.promote_types(matrix.dtype, jnp.complex64)
-        return jax.pure_callback(
-            _eig_jax_cpu,
-            (
-                jnp.ones(matrix.shape[:-1], dtype=dtype),  # Eigenvalues
-                jnp.ones(matrix.shape, dtype=dtype),  # Eigenvectors
-            ),
-            matrix.astype(dtype),
-            vectorized=True,
-        )
+        return _eig_callback(matrix)
+
+
+def _eig_callback(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Evaluates the host eigensolver with batch-compatible callback semantics."""
+    dtype = jnp.promote_types(matrix.dtype, jnp.complex64)
+    return jax.pure_callback(
+        _eig_jax_cpu,
+        (
+            jax.ShapeDtypeStruct(matrix.shape[:-1], dtype),  # Eigenvalues
+            jax.ShapeDtypeStruct(matrix.shape, dtype),  # Eigenvectors
+        ),
+        matrix.astype(dtype),
+        vmap_method="legacy_vectorized",
+    )
 
 
 with jax.default_device(jax.devices("cpu")[0]):

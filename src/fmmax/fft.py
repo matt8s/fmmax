@@ -11,6 +11,85 @@ import jax.numpy as jnp
 from fmmax import basis, utils
 
 
+def binary_lamellar_fourier_coefficients(
+    value: jnp.ndarray,
+    background: jnp.ndarray,
+    fill_fraction: jnp.ndarray,
+    center: jnp.ndarray,
+    orders: jnp.ndarray,
+) -> jnp.ndarray:
+    """Returns analytic Fourier coefficients of a periodic binary stripe.
+
+    The stripe is invariant along the second fractional lattice coordinate.
+    Along the first coordinate it has width `fill_fraction` (in [0, 1]) and
+    fractional-period `center`. Parameters broadcast over batch dimensions.
+    The Fourier convention is `exp(-2j * pi * (m * u + n * v))`.
+
+    Integrating the lamellar profile of Li, *Fourier Modal Method*, chapter 13
+    of *Gratings: Theory and Numeric Applications* (2014), Eq. (13.1), gives
+    `background * delta(m, 0) + (value - background) * f * sinc(m*f)` for a
+    centered stripe. Translation supplies the negative-sign Fourier phase.
+    Apply this function separately to reciprocal material values when using
+    the inverse factorization rule; matrix inversion is not equivalent.
+
+    Args:
+        value: Material value inside the stripe, possibly complex.
+        background: Material value outside the stripe, possibly complex.
+        fill_fraction: Stripe width as a fraction of the period, in [0, 1].
+        center: Stripe center in fractional-period units.
+        orders: Integer reciprocal indices with shape `(..., 2)`.
+
+    Returns:
+        Coefficients with shape `batch_shape + orders.shape[:-1]`.
+    """
+    orders = jnp.asarray(orders)
+    if orders.ndim < 1 or orders.shape[-1] != 2:
+        raise ValueError("`orders` must have shape (..., 2).")
+    if not jnp.issubdtype(orders.dtype, jnp.integer):
+        raise ValueError("`orders` must contain integer reciprocal indices.")
+    value, background, fill_fraction, center = jnp.broadcast_arrays(
+        value, background, fill_fraction, center
+    )
+    suffix = (1,) * (orders.ndim - 1)
+    value = value.reshape(value.shape + suffix)
+    background = background.reshape(background.shape + suffix)
+    fill_fraction = fill_fraction.reshape(fill_fraction.shape + suffix)
+    center = center.reshape(center.shape + suffix)
+    m, n = orders[..., 0], orders[..., 1]
+    stripe = (
+        fill_fraction * jnp.sinc(m * fill_fraction) * jnp.exp(-2j * jnp.pi * m * center)
+    )
+    return (background * (m == 0) + (value - background) * stripe) * (n == 0)
+
+
+def binary_lamellar_convolution_matrix(
+    value: jnp.ndarray,
+    background: jnp.ndarray,
+    fill_fraction: jnp.ndarray,
+    center: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> jnp.ndarray:
+    """Returns a binary stripe's convolution matrix without spatial sampling.
+
+    Args:
+        value: Material value inside the stripe.
+        background: Material value outside the stripe.
+        fill_fraction: Stripe width as a fraction of the period, in [0, 1].
+        center: Stripe center in fractional-period units.
+        expansion: Field expansion defining the reciprocal indices.
+
+    Returns:
+        Matrix with shape `batch_shape + (num_terms, num_terms)`.
+    """
+    return binary_lamellar_fourier_coefficients(
+        value,
+        background,
+        fill_fraction,
+        center,
+        _standard_toeplitz_indices(expansion),
+    )
+
+
 def fourier_convolution_matrix(
     x: jnp.ndarray,
     expansion: basis.Expansion,

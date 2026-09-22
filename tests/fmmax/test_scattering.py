@@ -5,11 +5,13 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import dataclasses
 import unittest
+from unittest import mock
 
 import jax
 import jax.numpy as jnp
 import numpy as onp
 from jax import tree_util
+from parameterized import parameterized
 
 from fmmax import basis, fmm, scattering
 
@@ -325,7 +327,8 @@ class ChangeLayerThicknessTest(unittest.TestCase):
 
 
 class RedhefferStarProductTest(unittest.TestCase):
-    def test_star_product(self):
+    @parameterized.expand([(False,), (True,)])
+    def test_star_product(self, force_x64_solve):
         layer_solve_results = [
             _dummy_solve_result(jax.random.PRNGKey(0)),
             _dummy_solve_result(jax.random.PRNGKey(1)),
@@ -348,7 +351,15 @@ class RedhefferStarProductTest(unittest.TestCase):
             layer_solve_results=layer_solve_results,
             layer_thicknesses=layer_thicknesses,
         )
-        result = scattering.redheffer_star_product(a, b)
+        with mock.patch.object(scattering, "solve", wraps=scattering.solve) as solve:
+            result = scattering.redheffer_star_product(
+                a, b, force_x64_solve=force_x64_solve
+            )
+        # The precision policy applies to interface matching as well as block
+        # composition; otherwise the intermediate interface can lose precision.
+        self.assertTrue(solve.call_args_list)
+        for call in solve.call_args_list:
+            self.assertEqual(call.kwargs.get("force_x64_solve"), force_x64_solve)
 
         with self.subTest("s11"):
             onp.testing.assert_allclose(result.s11, expected.s11)
