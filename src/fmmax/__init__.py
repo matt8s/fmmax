@@ -5,6 +5,7 @@ __version__ = "v0.11.0"
 from . import (
     basis,
     beams,
+    exact_modal,
     farfield,
     fft,
     fields,

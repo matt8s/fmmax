@@ -71,6 +71,14 @@ the regression requires decreasing error through all three resolutions. The
 - Normalize each solver by its own incident flux. Reflected power is the negative
   backward flux. Compare propagating powers separately from evanescent amplitudes.
 
+For a uniform isotropic exterior, `fmmax.fields.diffraction_efficiencies` combines
+the two transverse components belonging to each reciprocal-lattice order and
+normalizes forward and backward powers by incident flux. The backward result is
+reported as a positive efficiency for power traveling toward decreasing z. This
+helper is not a raw modal-S unitarity test and should not be applied to a patterned
+or generally anisotropic layer where modal components do not map directly to
+external diffraction orders.
+
 ## Observed implementation differences
 
 The pinned torcwa source defines `pi = 3.141592652589793`, approximately 1e-9

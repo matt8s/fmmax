@@ -38,6 +38,113 @@ class Formulation(enum.Enum):
     POL_FOURIER = vector.POL_FOURIER
 
 
+def eigensolve_isotropic_media_from_convolution_matrices(
+    wavelength: jnp.ndarray,
+    in_plane_wavevector: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    permittivity_matrix: jnp.ndarray,
+    inverse_permittivity_matrix: jnp.ndarray,
+    expansion: basis.Expansion,
+    tangent_vector: Optional[jnp.ndarray] = None,
+) -> "LayerSolveResult":
+    """Performs an isotropic eigensolve from material convolution matrices.
+
+    The supplied matrices are `C(epsilon)` and `C(1 / epsilon)`, using the
+    expansion order and Fourier convention of `fft.fourier_convolution_matrix`.
+    In particular, `inverse_permittivity_matrix` is not generally the matrix
+    inverse of `permittivity_matrix`.
+
+    If `tangent_vector` is omitted, the transverse matrix uses the direct FFT
+    factorization. Supplying the constant Cartesian tangent of parallel material
+    interfaces applies the inverse Fourier factorization rule to the normal
+    electric-field component. This supports straight lamellae; arbitrary curved
+    interfaces require a spatial tangent-vector formulation.
+
+    Args:
+        wavelength: The free space wavelength of the excitation.
+        in_plane_wavevector: `(kx0, ky0)`.
+        primitive_lattice_vectors: The primitive real-space lattice vectors.
+        permittivity_matrix: Fourier convolution matrix `C(epsilon)`, with trailing
+            shape `(num_terms, num_terms)`.
+        inverse_permittivity_matrix: Fourier convolution matrix `C(1 / epsilon)`,
+            with the same shape and ordering as `permittivity_matrix`.
+        expansion: The field expansion defining the matrix ordering.
+        tangent_vector: Optional constant Cartesian interface tangent `(tx, ty)`.
+            A zero vector gives the direct factorization.
+
+    Returns:
+        The `LayerSolveResult`.
+    """
+    expected_shape = (expansion.num_terms, expansion.num_terms)
+    for name, matrix in (
+        ("permittivity_matrix", permittivity_matrix),
+        ("inverse_permittivity_matrix", inverse_permittivity_matrix),
+    ):
+        if matrix.ndim < 2 or matrix.shape[-2:] != expected_shape:
+            raise ValueError(
+                f"`{name}` must have trailing shape {expected_shape}, but got "
+                f"shape {matrix.shape}."
+            )
+    try:
+        permittivity_matrix, inverse_permittivity_matrix = jnp.broadcast_arrays(
+            permittivity_matrix, inverse_permittivity_matrix
+        )
+    except ValueError as error:
+        raise ValueError(
+            "Material convolution matrices must be batch-compatible."
+        ) from error
+    dtype = jnp.result_type(
+        permittivity_matrix.dtype, inverse_permittivity_matrix.dtype
+    )
+    permittivity_matrix = permittivity_matrix.astype(dtype)
+    inverse_permittivity_matrix = inverse_permittivity_matrix.astype(dtype)
+
+    (
+        wavelength,
+        in_plane_wavevector,
+        primitive_lattice_vectors,
+        (permittivity_matrix, inverse_permittivity_matrix),
+    ) = _validate_and_broadcast(
+        wavelength,
+        in_plane_wavevector,
+        primitive_lattice_vectors,
+        permittivity_matrix,
+        inverse_permittivity_matrix,
+    )
+    if tangent_vector is None:
+        zeros = jnp.zeros_like(permittivity_matrix)
+        transverse_permittivity_matrix = jnp.block(
+            [[permittivity_matrix, zeros], [zeros, permittivity_matrix]]
+        )
+    else:
+        transverse_permittivity_matrix = (
+            fmm_matrices.transverse_permittivity_from_convolution_matrices(
+                permittivity_matrix,
+                inverse_permittivity_matrix,
+                tangent_vector,
+            )
+        )
+
+    ones = jnp.ones(permittivity_matrix.shape[:-1], dtype=permittivity_matrix.dtype)
+    identity = utils.diag(ones)
+    transverse_identity = utils.diag(
+        jnp.ones_like(transverse_permittivity_matrix[..., 0])
+    )
+    return _numerical_eigensolve(
+        wavelength=wavelength,
+        in_plane_wavevector=in_plane_wavevector,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        z_permittivity_matrix=permittivity_matrix,
+        inverse_z_permittivity_matrix=inverse_permittivity_matrix,
+        transverse_permittivity_matrix=transverse_permittivity_matrix,
+        z_permeability_matrix=identity,
+        inverse_z_permeability_matrix=identity,
+        transverse_permeability_matrix=transverse_identity,
+        expansion=expansion,
+        tangent_vector_field=None,
+    )
+
+
 def eigensolve_isotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,

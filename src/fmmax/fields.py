@@ -153,6 +153,48 @@ def amplitude_poynting_flux(
     return jnp.real(s_forward), jnp.real(s_backward)
 
 
+def diffraction_efficiencies(
+    forward_amplitude: jnp.ndarray,
+    backward_amplitude: jnp.ndarray,
+    layer_solve_result: fmm.LayerSolveResult,
+    incident_flux: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Returns normalized forward and backward power by diffraction order.
+
+    This helper is intended for uniform isotropic exterior layers, where pairs
+    of transverse field components correspond to the same reciprocal-lattice
+    order. It combines those components and normalizes by positive incident
+    flux. Evanescent orders have zero real power up to numerical precision.
+
+    Args:
+        forward_amplitude: Forward modal amplitudes, with a trailing source axis.
+        backward_amplitude: Backward modal amplitudes at the same reference plane.
+        layer_solve_result: Eigensolve result for a uniform isotropic exterior.
+        incident_flux: Positive incident power, batch-compatible with the
+            amplitudes after removing their modal axis.
+
+    Returns:
+        Forward and backward diffraction efficiencies, each with a reciprocal-
+        order axis of length `expansion.num_terms`. Backward efficiency is
+        positive for power propagating toward decreasing z.
+    """
+    forward_flux, backward_flux = amplitude_poynting_flux(
+        forward_amplitude, backward_amplitude, layer_solve_result
+    )
+    num_terms = layer_solve_result.expansion.num_terms
+    forward_by_order = (
+        forward_flux[..., :num_terms, :] + forward_flux[..., num_terms:, :]
+    )
+    backward_by_order = -(
+        backward_flux[..., :num_terms, :] + backward_flux[..., num_terms:, :]
+    )
+    incident_flux = utils.atleast_nd(jnp.asarray(incident_flux), 1)
+    return (
+        forward_by_order / incident_flux[..., jnp.newaxis, :],
+        backward_by_order / incident_flux[..., jnp.newaxis, :],
+    )
+
+
 def directional_poynting_flux(
     forward_amplitude: jnp.ndarray,
     backward_amplitude: jnp.ndarray,
@@ -252,7 +294,7 @@ def eigenmode_poynting_flux(
     alpha_h = layer_solve_result.eigenvectors
     alpha_e = _poynting_flux_a_matrix(layer_solve_result)
     s_eigenmode = jnp.asarray(0.5) * (
-        (jnp.conj(alpha_e) * alpha_h + jnp.conj(alpha_h) * alpha_e)
+        jnp.conj(alpha_e) * alpha_h + jnp.conj(alpha_h) * alpha_e
     )
     flux = jnp.sum(jnp.real(s_eigenmode), axis=-2)
     assert flux.shape == layer_solve_result.eigenvalues.shape

@@ -112,6 +112,73 @@ def transverse_permittivity_fft(
     return jnp.block([[eps_hat, zeros], [zeros, eps_hat]])
 
 
+def transverse_permittivity_from_convolution_matrices(
+    permittivity_matrix: jnp.ndarray,
+    inverse_permittivity_matrix: jnp.ndarray,
+    tangent_vector: jnp.ndarray,
+) -> jnp.ndarray:
+    """Returns inverse-rule transverse permittivity for straight interfaces.
+
+    This is the constant-tangent specialization of the vector formulation in
+    [2012 Liu] equation 51. It applies Li's inverse Fourier factorization rule
+    to the electric-field component normal to parallel material interfaces.
+
+    Args:
+        permittivity_matrix: Fourier convolution matrix `C(epsilon)`.
+        inverse_permittivity_matrix: Fourier convolution matrix `C(1 / epsilon)`.
+        tangent_vector: Cartesian interface tangent `(tx, ty)`, with shape `(2,)`.
+            Its nonzero magnitude does not affect the result; a zero vector
+            disables the inverse-rule correction.
+
+    Returns:
+        The transverse permittivity matrix, with twice the matrix dimensions.
+    """
+    for matrix in (permittivity_matrix, inverse_permittivity_matrix):
+        if matrix.ndim < 2 or matrix.shape[-2] != matrix.shape[-1]:
+            raise ValueError(
+                "Material convolution matrices must be square, but got shape "
+                f"{matrix.shape}."
+            )
+    if permittivity_matrix.shape[-2:] != inverse_permittivity_matrix.shape[-2:]:
+        raise ValueError(
+            "Material convolution matrices must have matching trailing shapes, but "
+            f"got {permittivity_matrix.shape} and {inverse_permittivity_matrix.shape}."
+        )
+    try:
+        permittivity_matrix, inverse_permittivity_matrix = jnp.broadcast_arrays(
+            permittivity_matrix, inverse_permittivity_matrix
+        )
+    except ValueError as error:
+        raise ValueError(
+            "Material convolution matrices must be batch-compatible."
+        ) from error
+    tangent_vector = jnp.asarray(tangent_vector)
+    if tangent_vector.shape != (2,):
+        raise ValueError(
+            f"`tangent_vector` must have shape (2,), but got {tangent_vector.shape}."
+        )
+    dtype = jnp.result_type(
+        permittivity_matrix.dtype,
+        inverse_permittivity_matrix.dtype,
+        tangent_vector.dtype,
+    )
+    eps_hat = permittivity_matrix.astype(dtype)
+    eta_hat = inverse_permittivity_matrix.astype(dtype)
+    zeros = jnp.zeros_like(eps_hat)
+    eps_matrix = jnp.block([[eps_hat, zeros], [zeros, eps_hat]])
+    delta_hat = eps_hat - jnp.linalg.inv(eta_hat)
+    delta_matrix = jnp.block([[delta_hat, zeros], [zeros, delta_hat]])
+
+    tangent_vector = tangent_vector.astype(dtype)
+    tangent_scale = jnp.max(jnp.abs(tangent_vector))
+    tangent_vector = tangent_vector / jnp.where(tangent_scale == 0, 1, tangent_scale)
+    tx, ty = tangent_vector
+    Pxx, Pxy, Pyx, Pyy = _tangent_terms(tx, ty)
+    eye = jnp.eye(eps_hat.shape[-1], dtype=dtype)
+    p_matrix = jnp.block([[Pyy * eye, Pyx * eye], [Pxy * eye, Pxx * eye]])
+    return eps_matrix - delta_matrix @ p_matrix
+
+
 def transverse_permittivity_vector(
     permittivity: jnp.ndarray,
     tx: jnp.ndarray,

@@ -74,7 +74,9 @@ The latest JAX release requires a newer interpreter than the minimum supported
 by FMMAX; use the Python 3.14 lane when testing the newest dependencies.
 See [cross-solver validation](docs/docs/Numerical_validation.md) for the optional
 S4 and torcwa comparisons, and [analytic materials](docs/docs/Analytic_materials.md)
-for raster-free lamellar Fourier coefficients.
+for raster-free lamellar Fourier coefficients and direct matrix eigensolves.
+The [exact-modal documentation](docs/docs/Exact_modal.md) describes the initial
+binary-lamellar characteristic evaluator and its current integration limits.
 
 Note: for this to work, it may be necessary to first update your pip installation using e.g. `python3 -m pip install --upgrade pip`.
 
