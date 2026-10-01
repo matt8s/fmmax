@@ -129,6 +129,32 @@ passed. This is accelerator correctness and placement evidence, not a performanc
 claim; a speedup requires synchronized timing on an otherwise comparable,
 uncontended CPU/GPU workload.
 
+An A100 CPU/GPU timing comparison using the optional jeig backend used 64-bit
+arrays, highest matrix-multiplication precision, one host BLAS/OpenMP thread,
+explicit JIT warmup, and synchronized every timed result with
+`block_until_ready()`. Three fresh processes per backend gave the following
+medians of process medians:
+
+| Workload | CPU | GPU | CPU time / GPU time |
+| --- | ---: | ---: | ---: |
+| Patterned 129-term eigensolve, 2048-point raster | 107.1 ms | 108.3 ms | 0.99 |
+| Uniform-layer field reconstruction, 4096 sources | 72.4 ms | 7.51 ms | 9.65 |
+
+The patterned solve is host-eigensolver-bound and does not accelerate. Field
+reconstruction is a large accelerator-native matrix workload and is about 9.6
+times faster. Compilation reverses the result for a first call: compile-plus-first
+execution was 1.34 and 1.48 times slower on GPU for the eigensolve and field
+workloads, respectively. GPU acceleration therefore benefits repeated or batched
+work rather than every call.
+
+All CPU/GPU field arrays agreed within `3.8e-16` relative error. Patterned-layer
+mode ordering differed, as eigensolver ordering is not physical; after minimum-cost
+mode matching, all 258 longitudinal eigenvalues agreed within `1.3e-11` relative
+and `1.2e-11` absolute error. The benchmark also exposed backend-dependent signs
+for numerically real propagation constants. FMMAX now chooses positive real part
+when the imaginary part is at roundoff scale, while retaining positive imaginary
+part for genuinely evanescent modes.
+
 ## Observed implementation differences
 
 The pinned torcwa source defines `pi = 3.141592652589793`, approximately 1e-9

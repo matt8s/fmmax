@@ -1219,7 +1219,11 @@ def _validate_and_broadcast(
 
 
 def _select_eigenvalues_sign(eigenvalues: jnp.ndarray) -> jnp.ndarray:
-    """Selects the sign of eigenvalues to have strictly positive imaginary part.
+    """Selects the physical sign of longitudinal wavevector eigenvalues.
+
+    Evanescent modes are selected to have positive imaginary part. Numerically
+    propagating modes can acquire backend-dependent imaginary roundoff; these are
+    selected to have nonnegative real part instead.
 
     Args:
         eigenvalues: The eigenvalues whose sign is to be adjusted.
@@ -1227,7 +1231,14 @@ def _select_eigenvalues_sign(eigenvalues: jnp.ndarray) -> jnp.ndarray:
     Returns:
         The eigenvalues with adjusted sign.
     """
-    return jnp.where(jnp.imag(eigenvalues) < 0, -eigenvalues, eigenvalues)
+    real_dtype = jnp.asarray(eigenvalues).real.dtype
+    tolerance = 10 * jnp.finfo(real_dtype).eps * jnp.maximum(jnp.abs(eigenvalues), 1)
+    imaginary = jnp.imag(eigenvalues)
+    numerically_propagating = jnp.abs(imaginary) <= tolerance
+    flip = (imaginary < -tolerance) | (
+        numerically_propagating & (jnp.real(eigenvalues) < 0)
+    )
+    return jnp.where(flip, -eigenvalues, eigenvalues)
 
 
 # -----------------------------------------------------------------------------

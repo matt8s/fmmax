@@ -569,6 +569,23 @@ class SignSelectionTest(unittest.TestCase):
         result = fmm._select_eigenvalues_sign(eigenvalues)
         onp.testing.assert_array_equal(result, expected)
 
+    @parameterized.parameterized.expand([("complex64", 1e-8), ("complex128", 1e-16)])
+    def test_numerically_propagating_modes_have_positive_real_part(
+        self, dtype, perturbation
+    ):
+        eigenvalues = jnp.asarray(
+            [
+                -2 + perturbation * 1j,
+                -2 - perturbation * 1j,
+                2 + perturbation * 1j,
+                2 - perturbation * 1j,
+            ],
+            dtype=dtype,
+        )
+        result = fmm._select_eigenvalues_sign(eigenvalues)
+        self.assertTrue(onp.all(onp.real(result) > 0))
+        onp.testing.assert_array_equal(onp.abs(result), onp.abs(eigenvalues))
+
 
 class LayerSolveResultInputValidationTest(unittest.TestCase):
     @parameterized.parameterized.expand(
