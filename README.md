@@ -68,6 +68,26 @@ pip install -e ".[dev]"
 
 The `[dev]` modifier specifies optional dependencies for developers which are listed in `pyproject.toml`.
 
+For NVIDIA GPU execution on Linux, install the JAX CUDA wheels rather than a
+CPU-only `jaxlib`. CUDA 13 requires a sufficiently recent driver and GPU; CUDA 12
+retains broader hardware compatibility:
+
+```sh
+python -m pip install -e ".[dev,cuda13]"
+# Or, for CUDA 12:
+python -m pip install -e ".[dev,cuda12]"
+```
+
+Confirm the selected backend instead of assuming that a successful import uses
+the GPU:
+
+```python
+import jax
+
+print(jax.devices())
+assert jax.default_backend() == "gpu"
+```
+
 This fork requires Python 3.10 or newer. Its compatibility lanes cover
 Python 3.10 / JAX 0.4.38 and Python 3.14 / JAX 0.11.2, including NumPy 2.
 The latest JAX release requires a newer interpreter than the minimum supported

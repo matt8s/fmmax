@@ -15,9 +15,26 @@ def orders_1d(half_width):
     )
 
 
-def fmmax_result(epsilon, wavelength, thickness, half_width, polarization):
+def fmmax_result(
+    epsilon,
+    wavelength,
+    thickness,
+    half_width,
+    polarization,
+    polar_angle_degrees=0.0,
+    azimuthal_angle_degrees=0.0,
+):
     expansion = basis.Expansion(basis_coefficients=orders_1d(half_width))
     lattice = basis.LatticeVectors(u=jnp.array([1.0, 0.0]), v=jnp.array([0.0, 1.0]))
+
+    polar_angle = jnp.deg2rad(polar_angle_degrees)
+    azimuthal_angle = jnp.deg2rad(azimuthal_angle_degrees)
+    in_plane_wavevector = jnp.asarray(
+        [
+            2 * jnp.pi / wavelength * jnp.sin(polar_angle) * jnp.cos(azimuthal_angle),
+            2 * jnp.pi / wavelength * jnp.sin(polar_angle) * jnp.sin(azimuthal_angle),
+        ]
+    )
 
     def solve(eps):
         eps = jnp.asarray(eps, dtype=complex)
@@ -25,7 +42,7 @@ def fmmax_result(epsilon, wavelength, thickness, half_width, polarization):
             eps = eps.reshape(1, 1)
         return fmm.eigensolve_isotropic_media(
             wavelength=jnp.asarray(wavelength),
-            in_plane_wavevector=jnp.zeros(2),
+            in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=lattice,
             permittivity=eps,
             expansion=expansion,
@@ -43,9 +60,14 @@ def fmmax_result(epsilon, wavelength, thickness, half_width, polarization):
     )
     electric_map = jnp.concatenate(electric[:2], axis=0)
     component = 1 if polarization == "TE" else 0
-    target = (
-        jnp.zeros((2 * n, 1), dtype=complex).at[half_width + component * n, 0].set(1.0)
+    polarization_xy = (
+        jnp.asarray([-jnp.sin(azimuthal_angle), jnp.cos(azimuthal_angle)])
+        if polarization == "TE"
+        else jnp.asarray([jnp.cos(azimuthal_angle), jnp.sin(azimuthal_angle)])
     )
+    target = jnp.zeros((2 * n, 1), dtype=complex)
+    target = target.at[half_width, 0].set(polarization_xy[0])
+    target = target.at[half_width + n, 0].set(polarization_xy[1])
     incident = jnp.linalg.solve(electric_map, target)
     reflected, transmitted = smat.s21 @ incident, smat.s11 @ incident
     zero = jnp.zeros_like(incident)

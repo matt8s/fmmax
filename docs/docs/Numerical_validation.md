@@ -37,8 +37,9 @@ consistent native compiler/runtime and BLAS/LAPACK installation, then run:
 python -m pytest tests/comparisons/test_s4.py
 ```
 
-Ten S4 cases passed in the same Python 3.10 environment, including metallic films
-and gratings. For the dielectric films, the maximum
+Twenty-six S4 cases pass, including metallic films and gratings at normal
+incidence, oblique and conical dielectric/absorbing/metallic films, and oblique
+and conical dielectric gratings. For the normal-incidence dielectric films, the maximum
 difference over complex amplitudes and powers was 3.4e-16. At fixed 11-order
 truncation, refining the FMMAX grating raster from 256 to 4096 samples reduced
 the maximum per-order power difference from S4 as follows:
@@ -55,6 +56,27 @@ samples. Further refinement to 16384 samples reduced that difference below 1e-3;
 the regression requires decreasing error through all three resolutions. The
 4096-sample discrepancy is therefore not treated as a solver defect.
 
+For incidence at 31 degrees in the periodic x-z plane, the maximum per-order power
+difference for uniform dielectric, absorbing, and metallic films was 7.8e-16.
+For the dielectric grating at 27 degrees, fixed 11-order truncation gave:
+
+| Polarization | 256 samples | 4096 samples | 16384 samples |
+| --- | ---: | ---: | ---: |
+| TE | 1.91e-2 | 1.14e-3 | 2.85e-4 |
+| TM | 9.70e-3 | 5.99e-4 | 1.50e-4 |
+
+Again, the regression checks monotonic raster convergence and a final error below
+`1e-3`; it does not hide the coarse-grid discrepancy by relaxing the gate.
+
+For conical incidence, uniform-film per-order powers agreed to 1.0e-15 at polar
+and azimuthal angles of 31 and 23 degrees. A dielectric grating at polar and
+azimuthal angles of 27 and 19 degrees gave:
+
+| Polarization | 256 samples | 4096 samples | 16384 samples |
+| --- | ---: | ---: | ---: |
+| TE | 2.02e-2 | 1.24e-3 | 3.09e-4 |
+| TM | 1.52e-2 | 9.31e-4 | 2.32e-4 |
+
 ## Conventions
 
 - Wavelength is the FMMAX input; comparator frequency is `1 / wavelength`.
@@ -62,7 +84,10 @@ the regression requires decreasing error through all three resolutions. The
   Passive internal materials have positive imaginary permittivity.
 - Match explicit integer reciprocal-order pairs. A torcwa order `[M, 0]` has
   `2*M+1` terms; a nominal basis-size request is not an order-set specification.
-- At normal incidence, TE has electric field along y and TM along x.
+- At normal incidence, TE has electric field along y and TM along x. The oblique
+  S4 cases use incidence in the periodic x-z plane, so TE remains along y and TM
+  remains in the x-z plane. For conical incidence, the FMMAX incident Cartesian
+  field is rotated into S4's s/p basis before normalizing by incident power.
 - FMMAX `s11` transmits and `s21` reflects. Their entries are modal amplitudes;
   convert with `fields_from_wave_amplitudes` before comparing Cartesian electric
   fields. torcwa's reflected p basis can have a different sign, so compare its
@@ -78,6 +103,31 @@ reported as a positive efficiency for power traveling toward decreasing z. This
 helper is not a raw modal-S unitarity test and should not be applied to a patterned
 or generally anisotropic layer where modal components do not map directly to
 external diffraction orders.
+
+## Accelerator precision
+
+JAX may use reduced-precision matrix multiplication for complex64 calculations on
+some GPUs. This is separate from the host eigensolver precision. Use 64-bit arrays
+for strict cross-solver validation, or set the JAX matrix-multiplication precision
+to `highest` when checking complex64 residuals:
+
+```python
+import jax
+
+jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_default_matmul_precision", "highest")
+```
+
+GPU timings must synchronize results with `block_until_ready()` and report
+compilation/warmup separately from steady-state execution.
+
+A focused NVIDIA A100 run used Python 3.14.6, JAX/jaxlib 0.11.2 with the CUDA 13
+plugin, NumPy 2.5.3, SciPy 1.18.1, and optional jeig 0.5.1. It verified that the
+production host eigencallback returned GPU-resident results, then ran the callback,
+analytic-matrix, gradient/flux, and all 26 S4 cases: 81 tests and 62 subtests
+passed. This is accelerator correctness and placement evidence, not a performance
+claim; a speedup requires synchronized timing on an otherwise comparable,
+uncontended CPU/GPU workload.
 
 ## Observed implementation differences
 

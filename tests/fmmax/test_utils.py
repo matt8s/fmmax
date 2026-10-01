@@ -158,9 +158,33 @@ class EigTest(unittest.TestCase):
                 onp.testing.assert_allclose(
                     onp.linalg.norm(vectors, axis=-2), 1, rtol=1e-6
                 )
+                # A100-class GPUs may use reduced precision for complex64 matrix
+                # products by default. Validate the eigensolver rather than that
+                # separate matmul policy.
+                with jax.default_matmul_precision("highest"):
+                    actual = matrix @ vectors
                 onp.testing.assert_allclose(
-                    matrix @ vectors, vectors * values[..., None, :], atol=1e-6
+                    actual, vectors * values[..., None, :], atol=1e-6
                 )
+
+    def test_production_callback_runs_on_accelerator(self):
+        accelerators = [device for device in jax.devices() if device.platform == "gpu"]
+        if not accelerators:
+            self.skipTest("No accelerator is available.")
+        matrix = jax.device_put(
+            jnp.asarray([[1.0 + 0.2j, 0.3 - 0.1j], [-0.2 + 0.05j, 2.0 - 0.1j]]),
+            accelerators[0],
+        )
+        values, vectors = jax.jit(utils._eig_callback)(matrix)
+        values.block_until_ready()
+        self.assertEqual(
+            next(iter(values.devices())).platform, accelerators[0].platform
+        )
+        with jax.default_matmul_precision("highest"):
+            residual = jnp.linalg.norm(
+                matrix @ vectors - vectors * values[jnp.newaxis, :]
+            ) / jnp.linalg.norm(matrix)
+        self.assertLess(float(residual), 1e-12)
 
     @parameterized.expand([(1.0,), (1.0j,)])
     def test_callback_eigenvector_gradient(self, direction):

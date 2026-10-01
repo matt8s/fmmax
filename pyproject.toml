@@ -5,7 +5,8 @@ version = "v0.11.0"
 description = "Fourier modal method with Jax"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
+license = "MIT"
+license-files = ["LICENSE"]
 
 keywords = ["fmm", "rcwa", "jax", "optics"] 
 
@@ -31,6 +32,12 @@ Documentation = "https://facebookresearch.github.io/fmmax/"
 Upstream = "https://github.com/facebookresearch/fmmax"
 
 [project.optional-dependencies]
+cuda12 = [
+  "jax[cuda12] >= 0.4.38, <= 0.11.2",
+]
+cuda13 = [
+  "jax[cuda13] >= 0.10.2, <= 0.11.2",
+]
 jeig = [
   "jeig",
 ]
@@ -55,7 +62,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=43.0.0", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
