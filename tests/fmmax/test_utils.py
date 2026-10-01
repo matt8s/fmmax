@@ -133,6 +133,61 @@ class InterpolateTest(unittest.TestCase):
 
 
 class EigTest(unittest.TestCase):
+    def test_cusolver_requires_supported_gpu(self):
+        implementation = getattr(jax.lax.linalg, "EigImplementation", None)
+        implementation = getattr(implementation, "CUSOLVER", None)
+        accelerators = [device for device in jax.devices() if device.platform == "gpu"]
+        if implementation is not None and accelerators:
+            self.skipTest("The cuSOLVER eigensolver is available.")
+        with self.assertRaisesRegex(ValueError, "cuSOLVER eigensolver requires"):
+            utils.eig(jnp.eye(2), backend=utils.EigBackend.CUSOLVER)
+
+    def test_cusolver_is_device_native_batched_and_differentiable(self):
+        implementation = getattr(jax.lax.linalg, "EigImplementation", None)
+        implementation = getattr(implementation, "CUSOLVER", None)
+        accelerators = [device for device in jax.devices() if device.platform == "gpu"]
+        if implementation is None or not accelerators:
+            self.skipTest("The cuSOLVER eigensolver is unavailable.")
+
+        def solve(m):
+            return utils.eig(m, backend=utils.EigBackend.CUSOLVER)
+
+        matrix_values = [
+            [[1.0 + 0.2j, 0.3 - 0.1j], [-0.2 + 0.05j, 2.0 - 0.1j]],
+            [[1.2 - 0.1j, -0.4 + 0.2j], [0.1 + 0.3j, 2.4 + 0.2j]],
+        ]
+        for dtype, tolerance in ((jnp.complex64, 1e-6), (jnp.complex128, 1e-12)):
+            with self.subTest(dtype=dtype):
+                matrix = jnp.asarray(matrix_values, dtype=dtype)
+                solve_jit = jax.jit(solve)
+                values, vectors = solve_jit(matrix)
+                self.assertEqual(next(iter(values.devices())).platform, "gpu")
+                with jax.default_matmul_precision("highest"):
+                    residual = jnp.linalg.norm(
+                        matrix @ vectors - vectors * values[..., jnp.newaxis, :]
+                    ) / jnp.linalg.norm(matrix)
+                self.assertLess(float(residual), tolerance)
+                vmap_values, vmap_vectors = jax.jit(jax.vmap(solve))(matrix)
+                with jax.default_matmul_precision("highest"):
+                    vmap_residual = jnp.linalg.norm(
+                        matrix @ vmap_vectors
+                        - vmap_vectors * vmap_values[..., jnp.newaxis, :]
+                    ) / jnp.linalg.norm(matrix)
+                self.assertLess(float(vmap_residual), tolerance)
+                compiler_ir = str(solve_jit.lower(matrix).compiler_ir())
+                self.assertIn("cusolver_geev_ffi", compiler_ir)
+                self.assertNotIn("xla_ffi_python_gpu_callback", compiler_ir)
+
+        def loss(x):
+            m = jnp.asarray([[1.0, x], [-0.2, 2.0]], dtype=complex)
+            _, eigenvectors = solve(m)
+            return jnp.sum(jnp.abs(eigenvectors[0, :]) ** 2)
+
+        derivative = jax.jit(jax.grad(loss))(0.3)
+        for step in (1e-4, 1e-5, 1e-6):
+            finite_difference = (loss(0.3 + step) - loss(0.3 - step)) / (2 * step)
+            onp.testing.assert_allclose(derivative, finite_difference, rtol=1e-6)
+
     @parameterized.expand([("float32",), ("complex64",), ("float64",), ("complex128",)])
     def test_callback_transforms(self, dtype):
         # A NumPy host function exercises the real callback API on CPU without

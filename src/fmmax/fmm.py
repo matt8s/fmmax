@@ -46,6 +46,7 @@ def eigensolve_isotropic_media_from_convolution_matrices(
     inverse_permittivity_matrix: jnp.ndarray,
     expansion: basis.Expansion,
     tangent_vector: Optional[jnp.ndarray] = None,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> "LayerSolveResult":
     """Performs an isotropic eigensolve from material convolution matrices.
 
@@ -71,6 +72,8 @@ def eigensolve_isotropic_media_from_convolution_matrices(
         expansion: The field expansion defining the matrix ordering.
         tangent_vector: Optional constant Cartesian interface tangent `(tx, ty)`.
             A zero vector gives the direct factorization.
+        eig_backend: Backend for the numerical eigendecomposition. `CUSOLVER`
+            keeps the patterned solve on an NVIDIA GPU when supported by JAX.
 
     Returns:
         The `LayerSolveResult`.
@@ -142,6 +145,7 @@ def eigensolve_isotropic_media_from_convolution_matrices(
         transverse_permeability_matrix=transverse_identity,
         expansion=expansion,
         tangent_vector_field=None,
+        eig_backend=eig_backend,
     )
 
 
@@ -152,6 +156,7 @@ def eigensolve_isotropic_media(
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> "LayerSolveResult":
     """Performs the eigensolve for a layer with isotropic permittivity.
 
@@ -168,6 +173,9 @@ def eigensolve_isotropic_media(
         expansion: The field expansion to be used.
         formulation: Specifies the formulation to be used, or a callable which computes
             the tangent vector field for a custom vector FMM formulation.
+        eig_backend: Backend for the numerical eigendecomposition.
+            `CUSOLVER` keeps the solve on an NVIDIA GPU when supported by JAX.
+            Ignored for uniform isotropic layers, which use an analytic solution.
 
     Returns:
         The `LayerSolveResult`.
@@ -176,7 +184,9 @@ def eigensolve_isotropic_media(
         _eigensolve_fn = _eigensolve_uniform_isotropic_media
     else:
         _eigensolve_fn = functools.partial(
-            _eigensolve_patterned_isotropic_media, formulation=formulation
+            _eigensolve_patterned_isotropic_media,
+            formulation=formulation,
+            eig_backend=eig_backend,
         )
 
     return _eigensolve_fn(
@@ -199,6 +209,7 @@ def eigensolve_anisotropic_media(
     permittivity_zz: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> "LayerSolveResult":
     """Performs the eigensolve for a layer with anisotropic permittivity.
 
@@ -220,6 +231,8 @@ def eigensolve_anisotropic_media(
         expansion: The field expansion to be used.
         formulation: Specifies the formulation to be used, or a callable which computes
             the tangent vector field for a custom vector FMM formulation.
+        eig_backend: Backend for the numerical eigendecomposition.
+            `CUSOLVER` keeps the solve on an NVIDIA GPU when supported by JAX.
 
     Returns:
         The `LayerSolveResult`.
@@ -241,6 +254,7 @@ def eigensolve_anisotropic_media(
         expansion=expansion,
         formulation=formulation,
         vector_field_source=None,
+        eig_backend=eig_backend,
     )
 
 
@@ -261,6 +275,7 @@ def eigensolve_general_anisotropic_media(
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
     vector_field_source: Optional[jnp.ndarray] = None,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> "LayerSolveResult":
     """Performs the eigensolve for a general anistropic layer.
 
@@ -294,12 +309,17 @@ def eigensolve_general_anisotropic_media(
             vector formulations of the FMM. If not specified, `(permittivity_xx +
             permittivity_yy) / 2` is used. Ignored for the `FFT` formulation. Should
             have shape matching the permittivities and permeabilities.
+        eig_backend: Backend for the numerical eigendecomposition.
+            `CUSOLVER` keeps the solve on an NVIDIA GPU when supported by JAX.
 
     Returns:
         The `LayerSolveResult`.
     """
     if permittivity_xx.shape[-2:] == (1, 1):
-        _eigensolve_fn = _eigensolve_uniform_general_anisotropic_media
+        _eigensolve_fn = functools.partial(
+            _eigensolve_uniform_general_anisotropic_media,
+            eig_backend=eig_backend,
+        )
     else:
         if vector_field_source is None:
             vector_field_source = (permittivity_xx + permittivity_yy) / 2
@@ -307,6 +327,7 @@ def eigensolve_general_anisotropic_media(
             _eigensolve_patterned_general_anisotropic_media,
             formulation=formulation,
             vector_field_source=vector_field_source,
+            eig_backend=eig_backend,
         )
 
     return _eigensolve_fn(
@@ -589,6 +610,7 @@ def _eigensolve_patterned_isotropic_media(
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned isotropic layer eigensolve.
 
@@ -603,6 +625,7 @@ def _eigensolve_patterned_isotropic_media(
         expansion: The field expansion to be used.
         formulation: Specifies the formulation to be used, or a callable which computes
             the tangent vector field for a custom vector FMM formulation.
+        eig_backend: Backend for the numerical eigendecomposition.
 
     Returns:
         The `LayerSolveResult`.
@@ -654,6 +677,7 @@ def _eigensolve_patterned_isotropic_media(
         transverse_permeability_matrix=transverse_permeability_matrix,
         expansion=expansion,
         tangent_vector_field=tangent_vector_field,
+        eig_backend=eig_backend,
     )
 
 
@@ -664,6 +688,7 @@ def _eigensolve_uniform_general_anisotropic_media(
     permittivities: TensorComponents,
     permeabilities: TensorComponents,
     expansion: basis.Expansion,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> LayerSolveResult:
     """Returns the results of a uniform anisotropic layer eigensolve.
 
@@ -679,6 +704,7 @@ def _eigensolve_uniform_general_anisotropic_media(
         permeabilities: The elements of the permeability tensor: `(mu_xx, mu_xy,
             mu_yx, mu_yy, mu_zz)`, each having shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
+        eig_backend: Backend for the numerical eigendecomposition.
 
     Returns:
         The `LayerSolveResult`.
@@ -762,6 +788,7 @@ def _eigensolve_uniform_general_anisotropic_media(
         transverse_permeability_matrix=transverse_permeability_matrix,
         expansion=expansion,
         tangent_vector_field=None,
+        eig_backend=eig_backend,
     )
 
 
@@ -774,6 +801,7 @@ def _eigensolve_patterned_general_anisotropic_media(
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
     vector_field_source: jnp.ndarray,
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> LayerSolveResult:
     """Returns the results of a patterned anisotropic layer eigensolve.
 
@@ -793,6 +821,7 @@ def _eigensolve_patterned_general_anisotropic_media(
             the tangent vector field for a custom vector FMM formulation.
         vector_field_source: Array used to calculate the vector field, with shape
             matching the permittivities and permeabilities.
+        eig_backend: Backend for the numerical eigendecomposition.
 
     Returns:
         The `LayerSolveResult`.
@@ -862,6 +891,7 @@ def _eigensolve_patterned_general_anisotropic_media(
         transverse_permeability_matrix=transverse_permeability_matrix,
         expansion=expansion,
         tangent_vector_field=tangent_vector_field,
+        eig_backend=eig_backend,
     )
 
 
@@ -882,6 +912,7 @@ def _numerical_eigensolve(
     transverse_permeability_matrix: jnp.ndarray,
     expansion: basis.Expansion,
     tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]],
+    eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned layer eigensolve.
 
@@ -906,6 +937,7 @@ def _numerical_eigensolve(
         tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
             transverse permittivity matrix, if a vector FMM formulation is used. If
             the `FFT` formulation is used, the vector field is `None`.
+        eig_backend: Backend for the numerical eigendecomposition.
 
     Returns:
         The `LayerSolveResult`.
@@ -934,7 +966,7 @@ def _numerical_eigensolve(
         transverse_permittivity_matrix @ omega_script_k_matrix
         - k_matrix @ transverse_permeability_matrix
     )
-    eigenvalues_squared, eigenvectors = utils.eig(matrix)
+    eigenvalues_squared, eigenvectors = utils.eig(matrix, backend=eig_backend)
     eigenvalues = jnp.sqrt(eigenvalues_squared)
     eigenvalues = _select_eigenvalues_sign(eigenvalues)
     return LayerSolveResult(
@@ -1232,7 +1264,15 @@ def _select_eigenvalues_sign(eigenvalues: jnp.ndarray) -> jnp.ndarray:
         The eigenvalues with adjusted sign.
     """
     real_dtype = jnp.asarray(eigenvalues).real.dtype
-    tolerance = 10 * jnp.finfo(real_dtype).eps * jnp.maximum(jnp.abs(eigenvalues), 1)
+    # A dense nonsymmetric eigensolve has a backward-error scale that grows with
+    # matrix dimension. Imaginary components below this scale cannot reliably be
+    # distinguished from roundoff in a nominally real propagation constant.
+    matrix_dimension = eigenvalues.shape[-1]
+    tolerance = (
+        matrix_dimension
+        * jnp.finfo(real_dtype).eps
+        * jnp.maximum(jnp.abs(eigenvalues), 1)
+    )
     imaginary = jnp.imag(eigenvalues)
     numerically_propagating = jnp.abs(imaginary) <= tolerance
     flip = (imaginary < -tolerance) | (

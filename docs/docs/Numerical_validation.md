@@ -129,9 +129,9 @@ passed. This is accelerator correctness and placement evidence, not a performanc
 claim; a speedup requires synchronized timing on an otherwise comparable,
 uncontended CPU/GPU workload.
 
-An A100 CPU/GPU timing comparison using the optional jeig backend used 64-bit
-arrays, highest matrix-multiplication precision, one host BLAS/OpenMP thread,
-explicit JIT warmup, and synchronized every timed result with
+An initial A100 CPU/GPU timing comparison using the optional jeig default backend
+used 64-bit arrays, highest matrix-multiplication precision, one host BLAS/OpenMP
+thread, explicit JIT warmup, and synchronized every timed result with
 `block_until_ready()`. Three fresh processes per backend gave the following
 medians of process medians:
 
@@ -140,20 +140,77 @@ medians of process medians:
 | Patterned 129-term eigensolve, 2048-point raster | 107.1 ms | 108.3 ms | 0.99 |
 | Uniform-layer field reconstruction, 4096 sources | 72.4 ms | 7.51 ms | 9.65 |
 
-The patterned solve is host-eigensolver-bound and does not accelerate. Field
-reconstruction is a large accelerator-native matrix workload and is about 9.6
-times faster. Compilation reverses the result for a first call: compile-plus-first
-execution was 1.34 and 1.48 times slower on GPU for the eigensolve and field
-workloads, respectively. GPU acceleration therefore benefits repeated or batched
-work rather than every call.
+The default patterned solve is host-eigensolver-bound and does not accelerate.
+Field reconstruction is a large accelerator-native matrix workload and is about
+9.6 times faster. Compilation reverses the result for a first call:
+compile-plus-first execution was 1.34 and 1.48 times slower on GPU for the
+eigensolve and field workloads, respectively. GPU acceleration therefore benefits
+repeated or batched work rather than every call.
+
+FMMAX also provides an explicit, optional device-native cuSOLVER path:
+
+```python
+import jax.numpy as jnp
+import numpy as np
+
+from fmmax import basis, fmm, utils
+
+orders = np.column_stack((np.arange(-64, 65), np.zeros(129, dtype=int)))
+expansion = basis.Expansion(orders)
+lattice = basis.LatticeVectors(jnp.array([1.0, 0.0]), jnp.array([0.0, 1.0]))
+x = jnp.arange(2048) / 2048
+permittivity = jnp.where(x[:, None] < 0.4, 4.0, 1.0)
+
+layer = fmm.eigensolve_isotropic_media(
+    wavelength=jnp.asarray(0.73),
+    in_plane_wavevector=jnp.asarray([0.21, 0.07]),
+    primitive_lattice_vectors=lattice,
+    permittivity=permittivity,
+    expansion=expansion,
+    formulation=fmm.Formulation.FFT,
+    eig_backend=utils.EigBackend.CUSOLVER,
+)
+```
+
+This calls `jax.lax.linalg.eig` with `EigImplementation.CUSOLVER`. It requires an
+NVIDIA GPU, a sufficiently recent JAX version exposing that implementation, and
+cuSOLVER 11.7.1 or newer. It does not depend on jeig or PyTorch. Unsupported
+configurations raise an error rather than silently moving the decomposition to the
+CPU. Lowered JAX IR contains `cusolver_geev_ffi` and contains neither a
+`pure_callback` nor `xla_ffi_python_gpu_callback`, confirming that the matrix
+construction and nonsymmetric eigendecomposition remain in the compiled GPU
+computation.
+
+The same synchronized protocol measured the end-to-end patterned solve, including
+Fourier-matrix construction, dense matrix products, and eigendecomposition:
+
+| Fourier terms | Eigensystem dimension | CPU | A100 cuSOLVER | Speedup |
+| ---: | ---: | ---: | ---: | ---: |
+| 129 | 258 | 111.8 ms | 65.2 ms | 1.71 |
+| 257 | 514 | 731.7 ms | 130.4 ms | 5.61 |
+| 513 | 1026 | 3.587 s | 368.5 ms | 9.73 |
+
+These are medians of three fresh-process medians with five synchronized steady
+calls per process. The crossover is workload- and system-dependent: native GPU
+execution does not guarantee acceleration for small matrices, while the cubic
+dense eigensolve increasingly favors the GPU as truncation grows.
+The 258-dimensional result was more load-sensitive in earlier exploratory runs;
+the larger-matrix speedups are the stronger evidence for useful scaling.
+Compile-plus-first medians for dimensions 258, 514, and 1026 were respectively
+1.020, 1.068, and 1.648 seconds on GPU versus 0.929, 1.397, and 4.170 seconds on
+CPU. The smallest one-shot solve therefore still favored CPU.
 
 All CPU/GPU field arrays agreed within `3.8e-16` relative error. Patterned-layer
 mode ordering differed, as eigensolver ordering is not physical; after minimum-cost
 mode matching, all 258 longitudinal eigenvalues agreed within `1.3e-11` relative
 and `1.2e-11` absolute error. The benchmark also exposed backend-dependent signs
 for numerically real propagation constants. FMMAX now chooses positive real part
-when the imaginary part is at roundoff scale, while retaining positive imaginary
-part for genuinely evanescent modes.
+when the imaginary part is within a matrix-dimension-scaled backward-error bound,
+while retaining positive imaginary part for genuinely evanescent modes. For the
+1026-mode case, all CPU/GPU propagation constants matched after permutation within
+`5.9e-11` relative and `8.1e-11` absolute error. The device-native path also passes
+batched residual, directional-gradient, lossless-flux, and converged chapter-10
+scattering checks.
 
 ## Observed implementation differences
 

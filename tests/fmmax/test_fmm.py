@@ -586,6 +586,15 @@ class SignSelectionTest(unittest.TestCase):
         self.assertTrue(onp.all(onp.real(result) > 0))
         onp.testing.assert_array_equal(onp.abs(result), onp.abs(eigenvalues))
 
+    def test_roundoff_tolerance_scales_with_matrix_dimension(self):
+        eigenvalues = jnp.ones(1026, dtype=jnp.complex128)
+        eigenvalues = eigenvalues.at[0].set(-13 + 1e-13j)
+        eigenvalues = eigenvalues.at[1].set(-13 + 1e-8j)
+        result = fmm._select_eigenvalues_sign(eigenvalues)
+        self.assertGreater(onp.real(result[0]), 0)
+        self.assertLess(onp.real(result[1]), 0)
+        self.assertGreater(onp.imag(result[1]), 0)
+
 
 class LayerSolveResultInputValidationTest(unittest.TestCase):
     @parameterized.parameterized.expand(

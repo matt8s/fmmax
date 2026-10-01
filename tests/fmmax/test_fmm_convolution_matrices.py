@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from fmmax import basis, fft, fields, fmm, fmm_matrices, scattering
+from fmmax import basis, fft, fields, fmm, fmm_matrices, scattering, utils
 
 jax.config.update("jax_enable_x64", True)
 
@@ -200,6 +200,75 @@ def test_batching_jit_and_directional_gradient():
         np.testing.assert_allclose(derivative, finite_difference, rtol=2e-4)
 
 
+def _cusolver_available():
+    implementation = getattr(jax.lax.linalg, "EigImplementation", None)
+    implementation = getattr(implementation, "CUSOLVER", None)
+    return implementation is not None and any(
+        device.platform == "gpu" for device in jax.devices()
+    )
+
+
+@pytest.mark.skipif(not _cusolver_available(), reason="cuSOLVER is unavailable")
+def test_cusolver_patterned_solve_is_device_native_and_differentiable():
+    x = np.arange(256) / 256
+    permittivity = jnp.asarray(
+        np.where(((x - 0.17) % 1) < 0.37, 3.4 + 0.2j, 1.2 + 0.05j)[:, None]
+    )
+
+    def solve(permittivity):
+        return fmm.eigensolve_isotropic_media(
+            wavelength=jnp.asarray(0.83),
+            in_plane_wavevector=jnp.asarray([0.21, 0.07]),
+            primitive_lattice_vectors=LATTICE,
+            permittivity=permittivity,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+            eig_backend=utils.EigBackend.CUSOLVER,
+        )
+
+    solve_jit = jax.jit(solve)
+    actual = solve_jit(permittivity)
+    expected = fmm.eigensolve_isotropic_media(
+        wavelength=jnp.asarray(0.83),
+        in_plane_wavevector=jnp.asarray([0.21, 0.07]),
+        primitive_lattice_vectors=LATTICE,
+        permittivity=permittivity,
+        expansion=EXPANSION,
+        formulation=fmm.Formulation.FFT,
+    )
+    assert next(iter(actual.eigenvalues.devices())).platform == "gpu"
+    compiler_ir = str(solve_jit.lower(permittivity).compiler_ir())
+    assert "cusolver_geev_ffi" in compiler_ir
+    assert "xla_ffi_python_gpu_callback" not in compiler_ir
+    np.testing.assert_allclose(
+        _sort(actual.eigenvalues**2), _sort(expected.eigenvalues**2), rtol=1e-10
+    )
+
+    def loss(fill):
+        eps_matrix = fft.binary_lamellar_convolution_matrix(
+            4.0, 1.0, fill, 0.13, EXPANSION
+        )
+        eta_matrix = fft.binary_lamellar_convolution_matrix(
+            0.25, 1.0, fill, 0.13, EXPANSION
+        )
+        result = fmm.eigensolve_isotropic_media_from_convolution_matrices(
+            wavelength=jnp.asarray(0.73),
+            in_plane_wavevector=jnp.asarray([0.13, 0.0]),
+            primitive_lattice_vectors=LATTICE,
+            permittivity_matrix=eps_matrix,
+            inverse_permittivity_matrix=eta_matrix,
+            expansion=EXPANSION,
+            tangent_vector=jnp.asarray([0.0, 1.0]),
+            eig_backend=utils.EigBackend.CUSOLVER,
+        )
+        return jnp.sum(jnp.abs(result.eigenvalues) ** 2)
+
+    derivative = jax.jit(jax.grad(loss))(jnp.asarray(0.37))
+    for step in (1e-4, 3e-5, 1e-5):
+        finite_difference = (loss(0.37 + step) - loss(0.37 - step)) / (2 * step)
+        np.testing.assert_allclose(derivative, finite_difference, rtol=2e-4)
+
+
 @pytest.mark.parametrize(
     "permittivity_shape,inverse_shape,error",
     [
@@ -227,7 +296,7 @@ def test_transverse_matrix_rejects_broadcasting_over_matrix_axes():
         )
 
 
-def _chapter_10_tm_reflection(half_width):
+def _chapter_10_tm_reflection(half_width, eig_backend=utils.EigBackend.DEFAULT):
     orders = np.column_stack(
         (np.arange(-half_width, half_width + 1), np.zeros(2 * half_width + 1, int))
     )
@@ -256,6 +325,7 @@ def _chapter_10_tm_reflection(half_width):
         ),
         expansion=expansion,
         tangent_vector=jnp.asarray([0.0, 1.0]),
+        eig_backend=eig_backend,
     )
     layers = [uniform(), grating, uniform()]
     s_matrix = scattering.stack_s_matrix(
@@ -303,3 +373,20 @@ def test_chapter_10_tm_benchmark_convergence():
     np.testing.assert_allclose(fine, 0.9487, atol=5e-4)
     np.testing.assert_allclose(coarse_total, 1.0, atol=1e-10)
     np.testing.assert_allclose(fine_total, 1.0, atol=1e-10)
+
+
+@pytest.mark.skipif(not _cusolver_available(), reason="cuSOLVER is unavailable")
+def test_cusolver_matches_default_scattering_and_flux():
+    expected_reflection, expected_total = _chapter_10_tm_reflection(8)
+    actual_reflection, actual_total = _chapter_10_tm_reflection(
+        8, utils.EigBackend.CUSOLVER
+    )
+    np.testing.assert_allclose(actual_reflection, expected_reflection, rtol=1e-10)
+    np.testing.assert_allclose(actual_total, expected_total, rtol=1e-10)
+    np.testing.assert_allclose(actual_total, 1.0, atol=1e-10)
+
+    converged_reflection, converged_total = _chapter_10_tm_reflection(
+        40, utils.EigBackend.CUSOLVER
+    )
+    np.testing.assert_allclose(converged_reflection, 0.9487, atol=5e-4)
+    np.testing.assert_allclose(converged_total, 1.0, atol=1e-10)

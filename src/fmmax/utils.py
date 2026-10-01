@@ -3,6 +3,8 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
+import enum
+import functools
 from typing import Tuple
 
 import jax
@@ -22,6 +24,21 @@ except ModuleNotFoundError:
 
 EIG_EPS_RELATIVE = 1e-12
 EIG_EPS_MINIMUM = 1e-24
+
+
+@enum.unique
+class EigBackend(enum.Enum):
+    """Enumerates supported nonsymmetric eigendecomposition backends."""
+
+    DEFAULT = "default"
+    CUSOLVER = "cusolver"
+
+
+jax.tree_util.register_pytree_node(
+    EigBackend,
+    lambda x: ((), x.value),
+    lambda value, _: EigBackend(value),
+)
 
 
 def diag(x: jnp.ndarray) -> jnp.ndarray:
@@ -108,12 +125,13 @@ def interpolate_permittivity(
 # -----------------------------------------------------------------------------
 
 
-@jax.custom_vjp
+@functools.partial(jax.custom_vjp, nondiff_argnums=(2,))
 def eig(
     matrix: jnp.ndarray,
     eps_relative: float = EIG_EPS_RELATIVE,
+    backend: EigBackend = EigBackend.DEFAULT,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Wraps `jnp.linalg.eig` in a jit-compatible, differentiable manner.
+    """Computes a jit-compatible, differentiable eigendecomposition.
 
     The custom vjp allows gradients with resepct to the eigenvectors, unlike the
     standard jax implementation of `eig`. We use an expression for the gradient
@@ -127,12 +145,15 @@ def eig(
     Args:
         matrix: The matrix for which eigenvalues and eigenvectors are sought.
         eps_relative: Parameter which determines the degree of broadening.
+        backend: The eigendecomposition backend. `DEFAULT` preserves the existing
+            host-compatible behavior. `CUSOLVER` performs the decomposition on an
+            NVIDIA GPU and requires JAX with `EigImplementation.CUSOLVER` support.
 
     Returns:
         The eigenvalues and eigenvectors.
     """
     del eps_relative
-    return _eig(matrix)
+    return _eig_with_backend(matrix, backend)
 
 
 def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -163,28 +184,61 @@ with jax.default_device(jax.devices("cpu")[0]):
     _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
 
+def _eig_cusolver(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Eigendecomposition using JAX's device-native cuSOLVER implementation."""
+    implementation = getattr(jax.lax.linalg, "EigImplementation", None)
+    implementation = getattr(implementation, "CUSOLVER", None)
+    if implementation is None:
+        raise ValueError(
+            "The cuSOLVER eigensolver requires a JAX version with "
+            "`jax.lax.linalg.EigImplementation.CUSOLVER` support."
+        )
+    if not any(device.platform == "gpu" for device in jax.devices()):
+        raise ValueError("The cuSOLVER eigensolver requires an NVIDIA GPU backend.")
+    eigenvalues, eigenvectors = jax.lax.linalg.eig(
+        matrix,
+        compute_left_eigenvectors=False,
+        implementation=implementation,
+    )
+    dtype = jnp.promote_types(matrix.dtype, jnp.complex64)
+    return eigenvalues.astype(dtype), eigenvectors.astype(dtype)
+
+
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Eigendecomposition using `jeig` if available, and `_eig_jax` if not."""
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
-    else:
-        return _eig_jax(matrix)
+    return _eig_jax(matrix)
+
+
+def _eig_with_backend(
+    matrix: jnp.ndarray, backend: EigBackend
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Eigendecomposition using the selected backend."""
+    if backend == EigBackend.CUSOLVER:
+        return _eig_cusolver(matrix)
+    if backend != EigBackend.DEFAULT:
+        raise ValueError(f"Unsupported eigendecomposition backend: {backend}.")
+    return _eig(matrix)
 
 
 def _eig_fwd(
     matrix: jnp.ndarray,
     eps_relative: float,
+    backend: EigBackend,
 ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray, float]]:
     """Implements the forward calculation for `eig`."""
-    eigenvalues, eigenvectors = _eig(matrix)
+    eigenvalues, eigenvectors = _eig_with_backend(matrix, backend)
     return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps_relative)
 
 
 def _eig_bwd(
+    backend: EigBackend,
     res: Tuple[jnp.ndarray, jnp.ndarray, float],
     grads: Tuple[jnp.ndarray, jnp.ndarray],
 ) -> Tuple[jnp.ndarray, None]:
     """Implements the backward calculation for `eig`."""
+    del backend
     eigenvalues, eigenvectors, eps_relative = res
     grad_eigenvalues, grad_eigenvectors = grads
 
