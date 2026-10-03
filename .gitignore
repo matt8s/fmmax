@@ -18,6 +18,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!/docs/vendor/braces/lib/
+!/docs/vendor/braces/lib/**
 lib64/
 parts/
 sdist/

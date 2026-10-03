@@ -25,6 +25,12 @@ module.exports = {
   },
   extends: ['airbnb', 'prettier'],
   plugins: ['react-hooks', 'header'],
+  overrides: [
+    {
+      files: ['security-tests/**/*.js'],
+      rules: {'header/header': OFF},
+    },
+  ],
   rules: {
     // Ignore certain webpack alias because it can't be resolved
     'import/no-unresolved': [

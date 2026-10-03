@@ -12,10 +12,12 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "ci": "npm run lint && npm run format:diff && npm run build",
-    "lint": "eslint --cache docusaurus.config.js sidebars.js && stylelint \"src/**/*.css\"",
-    "format": "prettier --config .prettierrc --write docusaurus.config.js sidebars.js package.json \"src/**/*.{js,jsx,ts,tsx,css}\"",
-    "format:diff": "prettier --config .prettierrc --list-different docusaurus.config.js sidebars.js package.json \"src/**/*.{js,jsx,ts,tsx,css}\""
+    "audit": "npm audit --audit-level=low",
+    "security:test": "node security-tests/dependencies.test.js",
+    "ci": "npm run audit && npm run security:test && npm run lint && npm run format:diff && npm run build",
+    "lint": "eslint --cache docusaurus.config.js sidebars.js \"security-tests/**/*.js\" && stylelint \"src/**/*.css\"",
+    "format": "prettier --config .prettierrc --write .eslintrc.js docusaurus.config.js sidebars.js package.json \"security-tests/**/*.js\" \"src/**/*.{js,jsx,ts,tsx,css}\"",
+    "format:diff": "prettier --config .prettierrc --list-different .eslintrc.js docusaurus.config.js sidebars.js package.json \"security-tests/**/*.js\" \"src/**/*.{js,jsx,ts,tsx,css}\""
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.18.2",
+    "braces": "file:vendor/braces",
     "eslint": "^8.19.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^8.5.0",
@@ -38,8 +41,17 @@
     "eslint-plugin-react": "^7.30.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^2.7.1",
+    "serialize-javascript": "7.1.2",
     "stylelint": "^14.9.1",
-    "stylelint-copyright": "3.10.2"
+    "stylelint-copyright": "3.10.2",
+    "update-notifier": "7.3.1",
+    "uuid": "11.1.1"
+  },
+  "overrides": {
+    "braces": "$braces",
+    "serialize-javascript": "$serialize-javascript",
+    "update-notifier": "$update-notifier",
+    "uuid": "$uuid"
   },
   "browserslist": {
     "production": [

@@ -2,7 +2,8 @@
 install:
 	@echo "Installing npm and pip dependencies..."
 	npm ci
-	npm audit --omit=dev --audit-level=critical
+	npm run audit
+	npm run security:test
 	python -m pip install "..[docs]"
 
 # Check if required packages are installed
