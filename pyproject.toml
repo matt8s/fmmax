@@ -2,7 +2,7 @@
 
 name = "fmmax"
 version = "v0.11.0"
-description = "Fourier modal method with Jax"
+description = "Fourier modal method with JAX"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -19,7 +19,6 @@ maintainers = [
   {name = "matt8s"},
 ]
 
-# TODO add gpu channels
 dependencies = [
   "jax >= 0.4.38, <= 0.11.2",
   "jaxlib >= 0.4.38, <= 0.11.2",
@@ -52,11 +51,16 @@ examples = [
   "scikit-image",
   "scipy",
 ]
+docs = [
+  "docstring-parser",
+  "nbconvert",
+  "nbformat",
+]
 dev = [
   "black",
   "bump-my-version",
   "darglint",
-  "fmmax[examples, tests]",
+  "fmmax[docs, examples, tests]",
   "isort",
   "mypy",
 ]
@@ -65,9 +69,16 @@ dev = [
 requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.black]
+target-version = ["py310"]
+
 [tool.setuptools.package-data]
 "fmmax" = ["py.typed"]
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]  # Allow tests with same name in different dirs.
 pythonpath = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["jeig"]
+ignore_missing_imports = true

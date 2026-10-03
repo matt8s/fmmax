@@ -3,9 +3,9 @@ slug: /
 ---
 # Introduction
 
-## FMMAX: Fourier Modal Method with Jax
+## FMMAX: Fourier Modal Method with JAX
 
-FMMAX is a an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax). 
+FMMAX is an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax).
 
 The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach [1999 Whittaker, 2012 Liu, 2020 Jin]. This allows certain classes of structures to be modeled with relatively low computational cost.
 
@@ -22,7 +22,7 @@ Vector FMM formulations introduce local coordinate systems at each point in the 
 ![Comparison of automatically-generated vector fields](../../img/vector_fields.png)
 
 ## Anisotropic, magnetic materials
-Our support of anisotropic, magnetic materials allows modeling of uniaxial perfectly matched layers. This is demonstrated in the `metal_dipole` example, which simulates in vaccuum located above a metal substrate. The resulting electric fields are whown below.
+Our support of anisotropic, magnetic materials allows modeling of uniaxial perfectly matched layers. This is demonstrated in the `metal_dipole` example, which simulates a dipole in vacuum above a metal substrate. The resulting electric fields are shown below.
 
 ![Dipole suspended above metal substrate with PML](../../img/metal_dipole.png)
 
@@ -38,10 +38,9 @@ Batched calculations are supported, and should be used where possible to avoid l
 
 ## Installation
 
-FMMAX can be installed via pip:
-```
-pip install fmmax
-```
+See the [installation guide](Installation.md) for pip, uv, Conda, CPU, and NVIDIA
+GPU setup. The development version is installed directly from a reviewed Git
+revision until publishing access is coordinated with the original maintainers.
 
 ## Citing FMMAX
 
@@ -59,10 +58,10 @@ If you use FMMAX, please consider citing [our paper](https://arxiv.org/abs/2308.
 ```
 
 ## License
-FMMAX is licensed under the [MIT license](https://github.com/facebookresearch/fmmax/blob/main/LICENSE).
+FMMAX is licensed under the [MIT license](https://github.com/matt8s/fmmax/blob/main/LICENSE).
 
 ## References
-- [2012 Liu] V. Liu and S. Fan, [S4: A free electromagnetic solver for layered structures structures](https://www.sciencedirect.com/science/article/pii/S0010465512001658), _Comput. Phys. Commun._ **183**, 2233-2244 (2012).
+- [2012 Liu] V. Liu and S. Fan, [S4: A free electromagnetic solver for layered periodic structures](https://www.sciencedirect.com/science/article/pii/S0010465512001658), _Comput. Phys. Commun._ **183**, 2233-2244 (2012).
 
 - [1999 Whittaker] D. M. Whittaker and I. S. Culshaw, [Scattering-matrix treatment of patterned multilayer photonic structures](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.60.2610), _Phys. Rev. B_ **60**, 2610 (1999).
 

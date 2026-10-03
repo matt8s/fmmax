@@ -1,10 +1,10 @@
-# FMMAX: Fourier Modal Method with Jax
+# FMMAX: Fourier Modal Method with JAX
 
 <a href="https://facebookresearch.github.io/fmmax/"><img src="https://img.shields.io/badge/Docs-blue.svg"/></a>
 ![Continuous integration](https://github.com/matt8s/fmmax/actions/workflows/build-ci.yml/badge.svg)
 ![PyPI version](https://img.shields.io/pypi/v/fmmax)
 
-FMMAX is a an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax). 
+FMMAX is an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax).
 
 ## Maintenance status
 
@@ -32,7 +32,7 @@ Vector FMM formulations introduce local coordinate systems at each point in the 
 ![Comparison of automatically-generated vector fields](/img/vector_fields.png)
 
 ## Anisotropic, magnetic materials
-Our support of anisotropic, magnetic materials allows modeling of uniaxial perfectly matched layers. This is demonstrated in the `metal_dipole` example, which simulates in vaccuum located above a metal substrate. The resulting electric fields are whown below.
+Our support of anisotropic, magnetic materials allows modeling of uniaxial perfectly matched layers. This is demonstrated in the `metal_dipole` example, which simulates a dipole in vacuum above a metal substrate. The resulting electric fields are shown below.
 
 ![Dipole suspended above metal substrate with PML](/img/metal_dipole.png)
 
@@ -48,12 +48,8 @@ Batched calculations are supported, and should be used where possible to avoid l
 
 ## Installation
 
-FMMAX can be installed via pip:
-```
-pip install fmmax
-```
-
-This installs the existing PyPI distribution. To work on this fork, use:
+`pip install fmmax` installs the existing upstream PyPI distribution, not the
+unreleased development in this maintenance fork. To work on this fork, use:
 
 ```sh
 git clone https://github.com/matt8s/fmmax.git
@@ -61,12 +57,11 @@ cd fmmax
 python -m pip install -e ".[dev]"
 ```
 
-For developers requiring a local installation, you will need to first clone this repository and then perform a local install from within the root directory using:
-```
-pip install -e ".[dev]"
-```
+The `[dev]` extra installs the developer dependencies listed in `pyproject.toml`.
 
-The `[dev]` modifier specifies optional dependencies for developers which are listed in `pyproject.toml`.
+The [installation guide](docs/docs/Installation.md) gives reproducible commands
+for pip, uv, and Conda environments; direct Git installs should be pinned to a
+reviewed tag or full commit. No separate Conda package is published at present.
 
 For NVIDIA GPU execution on Linux, install the JAX CUDA wheels rather than a
 CPU-only `jaxlib`. CUDA 13 requires a sufficiently recent driver and GPU; CUDA 12
@@ -98,8 +93,6 @@ for raster-free lamellar Fourier coefficients and direct matrix eigensolves.
 The [exact-modal documentation](docs/docs/Exact_modal.md) describes the initial
 binary-lamellar characteristic evaluator and its current integration limits.
 
-Note: for this to work, it may be necessary to first update your pip installation using e.g. `python3 -m pip install --upgrade pip`.
-
 ## Citing FMMAX
 
 If you use FMMAX, please consider citing [our paper](https://arxiv.org/abs/2308.08573),
@@ -116,10 +109,10 @@ If you use FMMAX, please consider citing [our paper](https://arxiv.org/abs/2308.
 ```
 
 ## License
-FMMAX is licensed under the [MIT license](https://github.com/facebookresearch/fmmax/blob/main/LICENSE).
+FMMAX is licensed under the [MIT license](LICENSE).
 
 ## References
-- [2012 Liu] V. Liu and S. Fan, [S4: A free electromagnetic solver for layered structures structures](https://www.sciencedirect.com/science/article/pii/S0010465512001658), _Comput. Phys. Commun._ **183**, 2233-2244 (2012).
+- [2012 Liu] V. Liu and S. Fan, [S4: A free electromagnetic solver for layered periodic structures](https://www.sciencedirect.com/science/article/pii/S0010465512001658), _Comput. Phys. Commun._ **183**, 2233-2244 (2012).
 
 - [1999 Whittaker] D. M. Whittaker and I. S. Culshaw, [Scattering-matrix treatment of patterned multilayer photonic structures](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.60.2610), _Phys. Rev. B_ **60**, 2610 (1999).
 

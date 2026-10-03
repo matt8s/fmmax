@@ -2,7 +2,8 @@
 install:
 	@echo "Installing npm and pip dependencies..."
 	npm ci
-	python -m pip install docstring_parser nbformat nbconvert
+	npm audit --omit=dev --audit-level=critical
+	python -m pip install "..[docs]"
 
 # Check if required packages are installed
 check-packages:

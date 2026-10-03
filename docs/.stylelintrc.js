@@ -8,6 +8,15 @@
 module.exports = {
   plugins: ['stylelint-copyright'],
   rules: {
-    'docusaurus/copyright-header': true,
+    'docusaurus/copyright-header': [
+      true,
+      {
+        header:
+          '*\n * Copyright (c) Meta Platforms, Inc. and affiliates.\n *\n' +
+          ' * This source code is licensed under the MIT license found in the\n' +
+          ' * LICENSE file in the root directory of this source tree.\n *\n' +
+          ' * @format',
+      },
+    ],
   },
 };

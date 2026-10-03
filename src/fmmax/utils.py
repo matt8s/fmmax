@@ -195,7 +195,9 @@ def _eig_cusolver(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
         )
     if not any(device.platform == "gpu" for device in jax.devices()):
         raise ValueError("The cuSOLVER eigensolver requires an NVIDIA GPU backend.")
-    eigenvalues, eigenvectors = jax.lax.linalg.eig(
+    # JAX 0.4.38's type information predates the optional `implementation`
+    # argument, while newer JAX versions require it to select cuSOLVER.
+    eigenvalues, eigenvectors = jax.lax.linalg.eig(  # type: ignore[call-arg]
         matrix,
         compute_left_eigenvectors=False,
         implementation=implementation,

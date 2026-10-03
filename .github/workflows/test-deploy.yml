@@ -5,8 +5,16 @@ on:
   pull_request:
     branches:
       - main
-    # Review gh actions docs if you want to further define triggers, paths, etc
-    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-deploy:
@@ -16,15 +24,14 @@ jobs:
         run:
             working-directory: ./docs/
     steps:
-      - uses: actions/checkout@v4
-      - run: cd docs
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 18
+          node-version: 24
           cache: "npm"
           cache-dependency-path: "./docs/package-lock.json"
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
             python-version: "3.10"
             cache: "pip"
