@@ -1,30 +1,46 @@
-# Docs
+# FMMAX documentation
 
-Here live the source markdown files and generation code for the FMMAX docs.
+This directory contains the Docusaurus site, its hand-written Markdown sources, and the scripts that generate tutorial and API documentation.
 
-## Quickstart
+## Build and serve the documentation
 
-To run a docs server locally, simply run the following (in the current directory):
+Run the following commands from the `docs` directory:
 
-```bash
-$ make install
-$ make all
+```sh
+make install
+make all
 ```
 
-(Note the above assumes you already have `python` and `npm` installed on your system)
+`make install` installs the Node and Python dependencies required by the documentation build. It assumes that `python` and `npm` are already available.
 
-The routine will automatically generate the API reference markdown files from the FMMAX source code, and the Tutorials markdown files from the FMMAX notebooks.
+`make all` checks the required tools, generates API Markdown from the FMMAX source docstrings, exports the tutorial notebooks to Markdown, and starts the Docusaurus development server. The command remains attached to the server process; use the address printed by Docusaurus to open the site.
 
-To test changes on the fly, you simply need to save the markdown file you are working on and the server should update the page in real time.
+While the development server is running, saving a hand-written Markdown file should update the rendered page. Run `make all` again when API docstrings or tutorial notebooks change and their generated Markdown needs to be refreshed.
 
-To *regenerate* API or tutorial markdown files from their source, simply run `make all` (no need to reinstall).
+## Generated content
 
-To clean the docs directory back to the upstream state, simply run `make clean`. This will delete all generated markdown files and the docusaurus dependencies.
+The documentation build produces two kinds of generated Markdown:
 
-## Adding tutorials
+- API pages under `docs/API`, generated from docstrings in `../src/fmmax`;
+- tutorial pages under `docs/Tutorials`, generated from notebooks in `../notebooks`.
 
-To add a new tutorial, simply add a new Jupyter notebook in the `../notebooks` directory. To ensure the output is also displayed in the docs, run the notebook once before committing.
+Edit API documentation in the Python docstrings and tutorial documentation in the notebooks rather than treating the generated Markdown as the source of truth.
 
-The notebook will automatically be exported as a markdown file as described above.
+The notebook exporter reads the outputs already stored in each notebook. It does not execute notebook cells. Run a tutorial notebook and save its outputs before exporting if those outputs should appear in the documentation.
 
-To add the new tutorial to the Tutorials menu bar, add the name of the markdown file (without the suffix) to the `sidebars.js` file. This allows you to specify the order in which the tutorials appear.
+## Adding a tutorial
+
+1. Add the Jupyter notebook to `../notebooks`.
+2. Run the notebook and save any outputs that should be displayed.
+3. Run `make all` to generate its Markdown page.
+4. Add the generated document ID, without the `.md` suffix, to the Tutorials section of `sidebars.js`.
+
+The order in `sidebars.js` determines the order shown in the Tutorials navigation.
+
+## Cleaning generated files
+
+```sh
+make clean
+```
+
+This removes ignored files beneath the documentation directory, including generated documentation and installed Node dependencies. Run `make install` before the next build if the dependencies were removed.

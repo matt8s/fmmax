@@ -2,7 +2,7 @@
 
 name = "fmmax"
 version = "v0.11.0"
-description = "Fourier modal method with JAX"
+description = "A differentiable Fourier modal method (RCWA) solver for periodic electromagnetic structures, built with JAX"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

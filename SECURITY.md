@@ -1,10 +1,7 @@
 # Security reporting
 
-Please report vulnerabilities privately using
-[GitHub's vulnerability reporting form](https://github.com/matt8s/fmmax/security/advisories/new).
-Include affected versions, reproduction steps, and the potential impact. Avoid
-posting credentials, private data, or exploit details in public issues.
+Please report suspected vulnerabilities privately through [GitHub's vulnerability reporting form](https://github.com/matt8s/fmmax/security/advisories/new).
 
-This community-maintenance fork currently targets the `main` branch. There is
-no separate supported release series yet. Reports will be assessed by @matt8s;
-no response-time guarantee is offered.
+Include the affected versions or commits, steps to reproduce the issue, and its potential impact. Do not post credentials, private data, or sensitive exploit details in public issues.
+
+Reports are assessed by [@matt8s](https://github.com/matt8s). The `main` branch is the current maintained line; there are no separate maintained release branches. Response times depend on maintainer availability, so no fixed response window is promised.

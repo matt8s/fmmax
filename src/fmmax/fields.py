@@ -370,7 +370,7 @@ def fields_from_wave_amplitudes(
     )
     angular_frequency = angular_frequency[..., jnp.newaxis, jnp.newaxis]
 
-    # We use the the Fourier convolution matrix for the inverse of permittivity,
+    # We use the Fourier convolution matrix for the inverse of permittivity,
     # rather than inverting the Fourier convolution matrix of permittivity itself.
     # This improves convergence of the computed z-component of electric field.
     ez = (
@@ -443,7 +443,7 @@ def fields_on_grid(
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
     Tuple[jnp.ndarray, jnp.ndarray],
 ]:
-    """Transforms the fields from fourier representation to the grid.
+    """Transforms fields from their Fourier representation to a real-space grid.
 
     The fields within an array of unit cells is returned, with the number of
     cells in each direction given by `num_unit_cells`.
@@ -489,7 +489,7 @@ def _fields_on_grid(
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
     Tuple[jnp.ndarray, jnp.ndarray],
 ]:
-    """Transforms the fields from fourier representation to the grid."""
+    """Transforms fields from their Fourier representation to a real-space grid."""
     _validate_amplitudes_shape(
         electric_field + magnetic_field,
         num_terms=expansion.num_terms,

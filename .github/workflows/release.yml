@@ -1,4 +1,4 @@
-name: Release PyPI
+name: Release to PyPI (gated)
 
 on:
   push:

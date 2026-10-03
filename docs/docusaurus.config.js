@@ -15,8 +15,8 @@ module.exports = async function createConfig() {
 
   /** @type {import('@docusaurus/types').Config} */
   const config = {
-    title: 'FMMAX Docs',
-    // tagline: 'The tagline of my site',
+    title: 'FMMAX Documentation',
+    tagline: 'Differentiable Fourier modal simulations with JAX',
     // favicon: 'img/favicon.ico',
 
     // Set the production url of your site here
@@ -49,7 +49,6 @@ module.exports = async function createConfig() {
             remarkPlugins: [math],
             rehypePlugins: [katex],
             routeBasePath: '/',
-            editUrl: 'https://github.com/matt8s/fmmax',
           },
           blog: false,
           theme: {},
@@ -95,37 +94,24 @@ module.exports = async function createConfig() {
           style: 'dark',
           links: [
             {
-              title: 'Legal',
-              // Please do not remove the privacy and terms, it's a legal requirement.
+              title: 'Project',
               items: [
                 {
-                  label: 'Privacy',
-                  href: 'https://opensource.fb.com/legal/privacy/',
+                  label: 'GitHub',
+                  href: 'https://github.com/matt8s/fmmax',
                 },
                 {
-                  label: 'Terms',
-                  href: 'https://opensource.fb.com/legal/terms/',
+                  label: 'License',
+                  href: 'https://github.com/matt8s/fmmax/blob/main/LICENSE',
                 },
                 {
-                  label: 'Data Policy',
-                  href: 'https://opensource.fb.com/legal/data-policy/',
-                },
-                {
-                  label: 'Cookie Policy',
-                  href: 'https://opensource.fb.com/legal/cookie-policy/',
+                  label: 'Original project',
+                  href: 'https://github.com/facebookresearch/fmmax',
                 },
               ],
             },
           ],
-          logo: {
-            alt: 'Meta Open Source Logo',
-            // This default includes a positive & negative version, allowing for
-            // appropriate use depending on your site's style.
-            src: '/img/meta_opensource_logo_negative.svg',
-            href: 'https://opensource.fb.com',
-          },
-          // Please do not remove the credits, help to publicize Docusaurus :)
-          copyright: `Copyright © ${new Date().getFullYear()} Meta Platforms, Inc. Built with Docusaurus.`,
+          copyright: `FMMAX contributors. Original project copyright © Meta Platforms, Inc. Built with Docusaurus.`,
         },
       }),
   };

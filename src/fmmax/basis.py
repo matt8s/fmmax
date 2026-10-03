@@ -171,7 +171,7 @@ def plane_wave_in_plane_wavevector(
     Args:
         wavelength: The free-space wavelength of the plane-wave excitation.
         polar_angle: Polar angle of the plane-wave excitation.
-        azimuthal_angle: Azimuthal angle of plane-wave the excitation.
+        azimuthal_angle: Azimuthal angle of the plane-wave excitation.
         permittivity: Scalar permittivity of the medium in which the polar angle
             and azimuthal angle are specified.
 

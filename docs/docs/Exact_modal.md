@@ -1,15 +1,18 @@
-# Exact-modal building blocks
+# Exact-modal characteristic evaluation
 
-`fmmax.exact_modal.binary_lamellar_characteristic` evaluates the transverse
-characteristic equation for a positive-real binary lamellar medium at
-nonconical incidence. It implements the trace condition in Boris Gralak,
-chapter 10, Eqs. (10.85)–(10.91), of [*Gratings: Theory and Numeric Applications*,
-second revisited edition (2014)](https://www.fresnel.fr/files/gratings/Second-Edition/Chapter10.pdf).
+## What the evaluator does
 
-The spectral parameter is the squared longitudinal wavevector. TE uses the
-permeability continuity parameter and TM the permittivity parameter. The
-implementation uses entire sine/cosine combinations at transverse cutoff and
-exponential scaling for strongly evanescent segment solutions.
+`fmmax.exact_modal.binary_lamellar_characteristic` evaluates the characteristic equation for a positive-real binary lamellar medium at nonconical incidence. It is useful for evaluating a candidate squared longitudinal wavevector and as the characteristic function in a root-search method supplied by the user.
+
+The implementation follows the trace condition in Boris Gralak, chapter 10, Eqs. (10.85)–(10.91), of [*Gratings: Theory and Numeric Applications*, second revisited edition (2014)](https://www.fresnel.fr/files/gratings/Second-Edition/Chapter10.pdf).
+
+## Spectral and polarization parameters
+
+The spectral parameter `eigenvalue_squared` is the squared longitudinal wavevector. For TE polarization, the segment matching condition uses the permeability continuity parameter. For TM polarization, it uses the permittivity parameter.
+
+At transverse cutoff, the evaluator uses entire sine/cosine combinations to avoid removable singularities. Strongly evanescent segment solutions are evaluated with exponential scaling to avoid overflow.
+
+## Usage
 
 ```python
 import jax.numpy as jnp
@@ -28,19 +31,16 @@ residual, scaled_derivative, log_scale = (
 )
 ```
 
-The residual and derivative have the same positive scale. Their ratio therefore
-gives the unscaled Newton correction, but `scaled_derivative` is deliberately
-not described as the derivative of `residual` where the scale varies.
+A root-search procedure can evaluate this function at candidate values of `eigenvalue_squared` and use the returned residual and derivative information to refine those candidates.
 
-This is a bounded exact-modal building block, not a complete solver. It does not
-claim to find all roots, reconstruct exact modes, compute overlaps, or produce
-scattering efficiencies. A future root API must provide finite search intervals,
-multiplicity-aware isolation, unresolved-cluster reporting, and an independently
-validated root count before claiming completeness. Exact-mode scattering also
-requires visually verified overlap and interface equations from the original
-chapter pages.
+## Interpreting the returned values
 
-The chapter's §10.6 scattering benchmark is presently exercised through the
-independent analytic Fourier-matrix solver for TM polarization. It validates the
-material factorization and scattering stack, not this characteristic evaluator
-or any future exact-root completeness claim.
+The function returns the scaled characteristic residual, the correspondingly scaled spectral derivative, and the logarithm of the positive scale factor.
+
+`residual` and `scaled_derivative` have the same positive scale. Their ratio therefore gives the unscaled Newton correction. However, where the scale varies with the spectral parameter, `scaled_derivative` is not the derivative of the scaled `residual`; it is the scale times the derivative of the unscaled characteristic equation.
+
+## Scope and validation
+
+This function is a characteristic evaluator rather than a complete exact-modal solver. Users supply root isolation and decide the finite search interval, multiplicity treatment, and handling of unresolved root clusters. The function does not reconstruct exact modes, compute modal overlaps, or produce scattering efficiencies.
+
+Scattering calculations continue to use the analytic Fourier-matrix path. The chapter's §10.6 scattering benchmark exercises that path for TM polarization and validates its material factorization and scattering stack. It does not by itself validate root completeness for the characteristic evaluator.

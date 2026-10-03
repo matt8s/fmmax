@@ -1,62 +1,62 @@
-"""Generates the tutorial markdown files from the in-repo docstrings.
+"""Export the stored tutorial notebooks as Markdown pages.
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import os
+from pathlib import Path
 
 import nbformat
 from nbconvert import MarkdownExporter
 
 
-def export_notebooks(notebook_dir: str, output_dir: str = None) -> None:
-    """
-    Scans a directory for IPython notebooks and exports them to markdown files.
+def export_notebooks(notebook_dir: str, output_dir: str | None = None) -> None:
+    """Export every notebook in a directory to Markdown.
+
+    The exporter uses the outputs already stored in each notebook; it does not run
+    notebook cells.
 
     Args:
-        notebook_dir (str): The path to the directory containing the notebooks.
-        output_dir (str, optional): The path to the directory where the markdown files should be saved. If not specified, the markdown files will be saved in the same directory as the original notebooks.
+        notebook_dir: Directory containing the notebooks.
+        output_dir: Directory that receives the Markdown and image files. When
+            omitted, files are written beside the source notebooks.
     """
-    # Check if the output directory exists
+    # Create the output directory when needed.
     if output_dir and not os.path.exists(output_dir):
-        # Create the output directory
         os.makedirs(output_dir)
 
-    # Loop through all files in the directory
-    for filename in os.listdir(notebook_dir):
-        # Check if the file is an IPython notebook
+    # Export every notebook in the source directory.
+    for filename in sorted(os.listdir(notebook_dir)):
         if filename.endswith(".ipynb"):
-            # Load the notebook
+            # Read the notebook without executing it.
             with open(os.path.join(notebook_dir, filename)) as f:
                 notebook = nbformat.read(f, as_version=4)
 
-            # Create a Markdown exporter
             exporter = MarkdownExporter()
 
-            # Export the notebook to markdown
-            body, resources = exporter.from_notebook_node(notebook)
+            # Keep each notebook's stored outputs in its own directory so files
+            # with common nbconvert names such as `output_1_0.png` cannot collide.
+            notebook_stem = filename[:-6]
+            body, resources = exporter.from_notebook_node(
+                notebook, resources={"output_files_dir": notebook_stem}
+            )
 
-            # Save the markdown to a file
             output_filename = filename[:-6] + ".md"
             output_filepath = os.path.join(output_dir or notebook_dir, output_filename)
             print(output_filepath)
             with open(output_filepath, "w") as f:
                 f.write(body)
 
-            # Save the images to the output directory
-            for image_filename, image_data in resources["outputs"].items():
-                with open(
-                    os.path.join(output_dir or notebook_dir, image_filename), "wb"
-                ) as f:
+            for image_filename, image_data in resources.get("outputs", {}).items():
+                image_path = Path(output_dir or notebook_dir) / image_filename
+                image_path.parent.mkdir(parents=True, exist_ok=True)
+                with image_path.open("wb") as f:
                     f.write(image_data)
 
 
 if __name__ == "__main__":
-    # Set the path to the directory containing the notebooks
     notebook_dir = "../notebooks"
 
-    # Set the path to the output directory (optional)
     output_dir = "./docs/Tutorials"
 
-    # Call the function to export the notebooks
     export_notebooks(notebook_dir, output_dir)

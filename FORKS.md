@@ -47,4 +47,4 @@ Upstream GitHub metadata includes 43 issues and 107 pull requests across all
 states. Original issue numbers and discussions remain at upstream URLs; they
 have not been renumbered or bulk-reposted here.
 
-See [MAINTENANCE.md](MAINTENANCE.md) for upstream links and contribution priorities.
+See [MAINTENANCE.md](MAINTENANCE.md) for upstream links, provenance, and maintenance policy.

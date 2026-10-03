@@ -133,7 +133,7 @@ def eig(
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Computes a jit-compatible, differentiable eigendecomposition.
 
-    The custom vjp allows gradients with resepct to the eigenvectors, unlike the
+    The custom VJP allows gradients with respect to the eigenvectors, unlike the
     standard jax implementation of `eig`. We use an expression for the gradient
     given in [2019 Boeddeker] along with a regularization scheme that applies
     a Lorentzian broadening to a term containing the inverse difference of

@@ -4,119 +4,115 @@
 ![Continuous integration](https://github.com/matt8s/fmmax/actions/workflows/build-ci.yml/badge.svg)
 ![PyPI version](https://img.shields.io/pypi/v/fmmax)
 
-FMMAX is an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax).
+FMMAX implements the Fourier modal method (FMM), also known as rigorous coupled-wave analysis (RCWA), in [JAX](https://github.com/google/jax). It solves Maxwell's equations in periodic layered media by expanding the in-plane directions in a truncated Fourier basis and propagating through the layer stack with scattering matrices [1999 Whittaker, 2012 Liu, 2020 Jin].
 
-## Maintenance status
+The JAX implementation supports automatic differentiation, batched calculations, and execution on CPUs and GPUs. FMMAX also provides Brillouin-zone integration, vector FMM formulations, and support for magnetic media and transverse anisotropy with a decoupled z axis.
 
-This is the community-maintenance fork maintained by [@matt8s](https://github.com/matt8s).
-The original [facebookresearch/fmmax](https://github.com/facebookresearch/fmmax)
-repository is archived. Development coordination, bug reports, and pull requests
-for this fork belong in [this repository](https://github.com/matt8s/fmmax).
+## Quick start
 
-See [MAINTENANCE.md](MAINTENANCE.md) for provenance, priorities, and handover status.
-Upstream ownership and PyPI publishing access have not been transferred. The
-documentation link and PyPI badge above refer to the existing upstream resources.
-
-The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach [1999 Whittaker, 2012 Liu, 2020 Jin]. This allows certain classes of structures to be modeled with relatively low computational cost.
-
-Our use of JAX enables GPU acceleration and automatic differentiation of FMM simulations. Besides these features, FMMAX is differentiated from other codes by its support for Brillouin zone integration, advanced vector FMM formulations which improve convergence, and anisotropic and magnetic materials.
-
-## Brillouin zone integration
-Brillouin zone integration [2022 Lopez-Fraguas] allows modeling of localized sources in periodic structures. Check out the `crystal` example to see how we model a Gaussian beam incident upon a photonic crystal slab, or an isolated dipole embedded within the slab. The Gaussian beam fields are shown below.
-
-![Gaussian beam incident on photonic crystal](/img/crystal_beam.gif)
-
-## Vector FMM formulations
-Vector FMM formulations introduce local coordinate systems at each point in the unit cell, which are normal and tangent to all interfaces. This allows normal and tangent field components to be treated differently and improves convergence. FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. These are supported also with anisotropic and magnetic materials. The `vector_fields` example computes vector fields by these methods for an example structure.
-
-![Comparison of automatically-generated vector fields](/img/vector_fields.png)
-
-## Anisotropic, magnetic materials
-Our support of anisotropic, magnetic materials allows modeling of uniaxial perfectly matched layers. This is demonstrated in the `metal_dipole` example, which simulates a dipole in vacuum above a metal substrate. The resulting electric fields are shown below.
-
-![Dipole suspended above metal substrate with PML](/img/metal_dipole.png)
-
-## FMM Conventions
-- The speed of light, vacuum permittivity, and vacuum permeability are all 1.
-- Fields evolve in time as $\exp(-i \omega t)$.
-- If $\mathbf{u}$ and $\mathbf{v}$ are the primitive lattice vectors, the unit cell is defined by the parallelogram with vertices at $\mathbf{0}$, $\mathbf{u}$, $\mathbf{u} + \mathbf{v}$, and $\mathbf{v}$.
-- For quantities defined on a grid (such as the permittivity distribution of a patterned layer) the value at grid index (0, 0) corresponds to the value at physical location $\mathbf{0}$.
-- The scattering matrix block $\mathbf{S}_{11}$ relates incident and transmitted forward-going fields, and other blocks have corresponding definitions. This differs from the convention e.g. in photonic integrated circuits.
-
-## Batching
-Batched calculations are supported, and should be used where possible to avoid looping. The batch axes are the leading axes, except for the wave amplitudes and electromagnetic fields, where a trailing batch axis is assumed. This allows e.g. computing the transmission through a structure for multiple polarizations via a matrix-matrix operation (`transmitted_amplitudes = S11 @ incident_amplitudes`), rather than a batched matrix-vector operation.
-
-## Installation
-
-`pip install fmmax` installs the existing upstream PyPI distribution, not the
-unreleased development in this maintenance fork. To work on this fork, use:
+FMMAX requires Python 3.10 or newer. To install this repository in an editable development environment, choose a reviewed tag or full commit and run:
 
 ```sh
 git clone https://github.com/matt8s/fmmax.git
 cd fmmax
+git checkout <reviewed-tag-or-full-commit>
 python -m pip install -e ".[dev]"
+python -m pip check
 ```
 
-The `[dev]` extra installs the developer dependencies listed in `pyproject.toml`.
-
-The [installation guide](docs/docs/Installation.md) gives reproducible commands
-for pip, uv, and Conda environments; direct Git installs should be pinned to a
-reviewed tag or full commit. No separate Conda package is published at present.
-
-For NVIDIA GPU execution on Linux, install the JAX CUDA wheels rather than a
-CPU-only `jaxlib`. CUDA 13 requires a sufficiently recent driver and GPU; CUDA 12
-retains broader hardware compatibility:
+Confirm that JAX can see the expected devices:
 
 ```sh
-python -m pip install -e ".[dev,cuda13]"
-# Or, for CUDA 12:
-python -m pip install -e ".[dev,cuda12]"
+python -c "import jax; print(jax.devices())"
 ```
 
-Confirm the selected backend instead of assuming that a successful import uses
-the GPU:
+> **Package and documentation note:** `pip install fmmax` and the [hosted documentation](https://facebookresearch.github.io/fmmax/) currently refer to the original upstream resources. Install this fork from [`matt8s/fmmax`](https://github.com/matt8s/fmmax), preferably at a reviewed tag or full commit. See [MAINTENANCE.md](MAINTENANCE.md) for maintenance and provenance details.
+
+For CPU, NVIDIA GPU, pip, uv, and Conda instructions, see the [installation guide](docs/docs/Installation.md).
+
+## Where to start
+
+Start with a workflow that matches your problem:
+
+- [Periodic dipole](notebooks/dipoles.ipynb): define a source, assemble scattering matrices, reconstruct fields, and calculate extraction efficiency.
+- [Metal, dipole, and PML](notebooks/metal_dipole.ipynb): model a dipole above a metal plane using anisotropic perfectly matched layers.
+- [Brillouin-zone integration](notebooks/crystal_bz.ipynb): simulate localized dipole and Gaussian-beam sources in a photonic-crystal slab.
+- [Metal grating](docs/docs/Metal_grating.md): build a layered grating simulation and compare convergence across expansion choices.
+
+Additional numerical-method documentation covers:
+
+- [analytic lamellar material coefficients](docs/docs/Analytic_materials.md);
+- [exact-modal characteristic evaluation](docs/docs/Exact_modal.md);
+- [cross-solver numerical validation](docs/docs/Numerical_validation.md).
+
+## Capabilities
+
+### Brillouin-zone integration
+
+Brillouin-zone integration [2022 Lopez-Fraguas] represents localized sources in periodic structures as a batch of Bloch-periodic calculations. The `crystal` example applies this method to a Gaussian beam incident on a photonic-crystal slab and to a localized dipole in a finite supercell within the slab.
+
+![Gaussian beam incident on photonic crystal](img/crystal_beam.gif)
+
+### Vector FMM formulations
+
+Vector formulations introduce local coordinate systems normal and tangent to material interfaces, allowing the corresponding field components to be treated differently to improve convergence. FMMAX implements the _Pol_, _Normal_, and _Jones_ methods described by [2012 Liu], as well as a _Jones direct_ formulation. Vector fields can be generated automatically by functional minimization, including for anisotropic and magnetic materials. See the `vector_fields` example for a comparison.
+
+![Comparison of automatically generated vector fields](img/vector_fields.png)
+
+### Anisotropic and magnetic materials
+
+FMMAX accepts permittivity and permeability tensors with `xx`, `xy`, `yx`, `yy`, and `zz` components. Among other applications, this enables uniaxial perfectly matched layers. The `metal_dipole` example uses these materials to simulate a dipole in vacuum above a metal substrate.
+
+![Dipole suspended above metal substrate with PML](img/metal_dipole.png)
+
+## FMM conventions
+
+- The speed of light, vacuum permittivity, and vacuum permeability are all 1.
+- Fields evolve in time as $\exp(-i\omega t)$.
+- For primitive lattice vectors $\mathbf{u}$ and $\mathbf{v}$, the unit cell is the parallelogram with vertices $\mathbf{0}$, $\mathbf{u}$, $\mathbf{u}+\mathbf{v}$, and $\mathbf{v}$.
+- For a gridded quantity such as patterned-layer permittivity, grid index `(0, 0)` corresponds to the physical location $\mathbf{0}$.
+- The scattering-matrix block $\mathbf{S}_{11}$ maps incident forward-going amplitudes to transmitted forward-going amplitudes. The other blocks follow the corresponding FMMAX convention, which differs from conventions commonly used for photonic integrated circuits.
+
+## Batching
+
+FMMAX supports batched calculations and generally favors batching over Python loops.
+
+- Most arrays use leading batch axes.
+- Wave amplitudes and electromagnetic fields use a trailing batch axis.
+
+For example, transmission for several incident polarizations can be evaluated as a matrix-matrix operation:
 
 ```python
-import jax
-
-print(jax.devices())
-assert jax.default_backend() == "gpu"
+transmitted_amplitudes = S11 @ incident_amplitudes
 ```
-
-This fork requires Python 3.10 or newer. Its compatibility lanes cover
-Python 3.10 / JAX 0.4.38 and Python 3.14 / JAX 0.11.2, including NumPy 2.
-The latest JAX release requires a newer interpreter than the minimum supported
-by FMMAX; use the Python 3.14 lane when testing the newest dependencies.
-See [cross-solver validation](docs/docs/Numerical_validation.md) for the optional
-S4 and torcwa comparisons, and [analytic materials](docs/docs/Analytic_materials.md)
-for raster-free lamellar Fourier coefficients and direct matrix eigensolves.
-The [exact-modal documentation](docs/docs/Exact_modal.md) describes the initial
-binary-lamellar characteristic evaluator and its current integration limits.
 
 ## Citing FMMAX
 
-If you use FMMAX, please consider citing [our paper](https://arxiv.org/abs/2308.08573),
+If you use FMMAX, please consider citing [the FMMAX paper](https://doi.org/10.1364/OE.503481):
 
-```
-@misc{schubert2023fourier,
-      title={Fourier modal method for inverse design of metasurface-enhanced micro-LEDs}, 
+```bibtex
+@article{schubert2023fourier,
       author={Martin F. Schubert and Alec M. Hammond},
+      title={Fourier modal method for inverse design of metasurface-enhanced micro-LEDs},
+      journal={Optics Express},
+      volume={31},
+      number={26},
+      pages={42945--42960},
       year={2023},
-      eprint={2308.08573},
-      archivePrefix={arXiv},
-      primaryClass={physics.comp-ph}
+      doi={10.1364/OE.503481}
 }
 ```
 
 ## License
+
 FMMAX is licensed under the [MIT license](LICENSE).
 
 ## References
-- [2012 Liu] V. Liu and S. Fan, [S4: A free electromagnetic solver for layered periodic structures](https://www.sciencedirect.com/science/article/pii/S0010465512001658), _Comput. Phys. Commun._ **183**, 2233-2244 (2012).
+
+- [2012 Liu] V. Liu and S. Fan, [S4: A free electromagnetic solver for layered periodic structures](https://www.sciencedirect.com/science/article/pii/S0010465512001658), _Comput. Phys. Commun._ **183**, 2233–2244 (2012).
 
 - [1999 Whittaker] D. M. Whittaker and I. S. Culshaw, [Scattering-matrix treatment of patterned multilayer photonic structures](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.60.2610), _Phys. Rev. B_ **60**, 2610 (1999).
 
-- [2020 Jin] W. Jin, W. Li, M. Orenstein, and S. Fan [Inverse design of lightweight broadband reflector for relativistic lightsail propulsion](https://pubs.acs.org/doi/10.1021/acsphotonics.0c00768), _ACS Photonics_ **7**, 9, 2350-2355 (2020).
+- [2020 Jin] W. Jin, W. Li, M. Orenstein, and S. Fan, [Inverse design of lightweight broadband reflector for relativistic lightsail propulsion](https://pubs.acs.org/doi/10.1021/acsphotonics.0c00768), _ACS Photonics_ **7**, 9, 2350–2355 (2020).
 
-- [2022 Lopez-Fraguas] E. Lopez-Fraguas, F. Binkowski, S. Burger, B. Garcia-Camara, R. Vergaz, C. Becker and P. Manley [Tripling the light extraction efficiency of a deep ultraviolet LED using a nanostructured p-contact](https://www.nature.com/articles/s41598-022-15499-7), _Scientific Reports_ **12**, 11480 (2022).
-    
+- [2022 Lopez-Fraguas] E. López-Fraguas, F. Binkowski, S. Burger, S. Hagedorn, B. García-Cámara, R. Vergaz, C. Becker, and P. Manley, [Tripling the light extraction efficiency of a deep ultraviolet LED using a nanostructured p-contact](https://www.nature.com/articles/s41598-022-15499-7), _Scientific Reports_ **12**, 11480 (2022).

@@ -136,10 +136,11 @@ def dirac_delta_source(
     `amplitudes_for_source`.
 
     Args:
-        location: The location of the source, with shape `(num_sources, 2)` and
-            the trailing axis giving the x and y location. By convention, the
-            center of the unit cell is at `(0, 0)`.
-        in_plane_wavevector: The in-plane wavevevector for the calculation, which
+        location: Cartesian source coordinates with shape `(num_sources, 2)`, where
+            the trailing axis contains x and y. The origin `(0, 0)` is a unit-cell
+            vertex; the center of a rectangular cell is therefore half a period
+            along each lattice direction.
+        in_plane_wavevector: The in-plane wavevector for the calculation, which
             gives the offset of the plane wave decomposition. Has shape `(..., 2)`
             with possible batch dimensions.
         primitive_lattice_vectors: The primitive lattice vectors of the unit cell.
@@ -185,10 +186,11 @@ def gaussian_source(
 
     Args:
         fwhm: The full-width at half-maximum for the Gaussian source.
-        location: The location of the source, with shape `(num_sources, 2)` and
-            the trailing axis giving the x and y location. By convention, the
-            center of the unit cell is at `(0, 0)`.
-        in_plane_wavevector: The in-plane wavevevector for the calculation, which
+        location: Cartesian source coordinates with shape `(num_sources, 2)`, where
+            the trailing axis contains x and y. The origin `(0, 0)` is a unit-cell
+            vertex; the center of a rectangular cell is therefore half a period
+            along each lattice direction.
+        in_plane_wavevector: The in-plane wavevector for the calculation, which
             gives the offset of the plane wave decomposition. Has shape `(..., 2)`
             with possible batch dimensions.
         primitive_lattice_vectors: The primitive lattice vectors of the unit cell.

@@ -277,7 +277,7 @@ def eigensolve_general_anisotropic_media(
     vector_field_source: Optional[jnp.ndarray] = None,
     eig_backend: utils.EigBackend = utils.EigBackend.DEFAULT,
 ) -> "LayerSolveResult":
-    """Performs the eigensolve for a general anistropic layer.
+    """Performs the eigensolve for a general anisotropic layer.
 
     Here, "general" refers to the fact that the layer material can be magnetic, i.e.
     the permeability and permittivity can be specified.
@@ -509,7 +509,7 @@ def _eigensolve_uniform_isotropic_media(
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
 ) -> LayerSolveResult:
-    r"""Returns the the results of a uniform isotropic layer eigensolve.
+    r"""Returns the results of a uniform isotropic layer eigensolve.
 
     The layer is uniform and isotropic, in the sense that the permittivity does not
     vary spatially and has no orientation dependence. In this case, the eigenvalues

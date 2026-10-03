@@ -1,22 +1,35 @@
 # Analytic lamellar material coefficients
 
-`fmmax.fft.binary_lamellar_fourier_coefficients` and
-`binary_lamellar_convolution_matrix` describe a periodic binary stripe without
-rasterizing its interfaces. The stripe is invariant along the second fractional
-lattice coordinate; width and center are fractions of the first lattice period.
+## When to use analytic coefficients
 
-For inside value `a`, outside value `b`, fill fraction `f` in `[0, 1]`, and center
-`c`, the Fourier convention and coefficients are
+Use `fmmax.fft.binary_lamellar_fourier_coefficients` and `binary_lamellar_convolution_matrix` for a periodic binary stripe with straight, parallel interfaces. The stripe is invariant along the second fractional lattice coordinate; its width and center are specified as fractions of the first lattice period.
+
+These functions evaluate the material Fourier coefficients analytically rather than obtaining them from a sampled spatial grid. This removes interface rasterization error. The electromagnetic fields are still represented by a finite Fourier expansion, so Fourier truncation error remains and should be checked by increasing the retained orders.
+
+## Fourier coefficients and matrix construction
+
+For inside value $a$, outside value $b$, fill fraction $f$ in $[0,1]$, and center $c$, the Fourier convention and coefficients are
 
 $$
 \widehat g_{m,n}=\int_0^1\int_0^1 g(u,v)e^{-2\pi i(mu+nv)}\,du\,dv
 =\left[b\delta_{m0}+(a-b)f\operatorname{sinc}(mf)e^{-2\pi imc}\right]\delta_{n0}.
 $$
 
-Here sinc is normalized: `sinc(x) = sin(pi*x)/(pi*x)`. A convolution-matrix entry
-uses the **difference** of the row and column reciprocal indices, including
-differences outside the retained field-order set. Material values, fill and
-center support broadcasting, JIT compilation and differentiation.
+Here sinc is normalized:
+
+```text
+sinc(x) = sin(pi*x)/(pi*x)
+```
+
+The convolution-matrix entry for a row and column uses the **difference** of their reciprocal indices. Those differences can lie outside the reciprocal orders retained for the field expansion, so constructing the matrix requires coefficients for the full set of pairwise differences rather than only the field-order set itself.
+
+The formula follows by integrating the binary profile in Lifeng Li, chapter 13, Eq. (13.1), of [*Gratings: Theory and Numeric Applications*, second revisited edition (2014)](https://www.fresnel.fr/files/gratings/Second-Edition/Chapter13.pdf).
+
+Material values, fill fraction, and center support broadcasting. The resulting calculations are compatible with JIT compilation and differentiation.
+
+## Usage
+
+The convolution matrix can be constructed directly from an `fmmax.basis.Expansion`:
 
 ```python
 import jax.numpy as jnp
@@ -32,16 +45,13 @@ epsilon = fft.binary_lamellar_convolution_matrix(
 )
 ```
 
-The formula follows by integrating the binary profile in Lifeng Li, chapter 13,
-Eq. (13.1), of [*Gratings: Theory and Numeric Applications*, second revisited
-edition (2014)](https://www.fresnel.fr/files/gratings/Second-Edition/Chapter13.pdf).
-For inverse Fourier factorization, compute the coefficients of the reciprocal
-material separately: `C(1/epsilon)` is generally not `inv(C(epsilon))`; see
-Eqs. (13.15)–(13.18).
+For inverse Fourier factorization, construct the reciprocal-material coefficients separately. In general,
 
-The matrices can be passed directly to
-`fmmax.fmm.eigensolve_isotropic_media_from_convolution_matrices`. The reciprocal
-material matrix must be supplied separately:
+```text
+C(1/epsilon) != inv(C(epsilon))
+```
+
+as discussed in Eqs. (13.15)–(13.18). The two matrices can then be passed to `fmmax.fmm.eigensolve_isotropic_media_from_convolution_matrices`:
 
 ```python
 from fmmax import fmm
@@ -67,20 +77,14 @@ layer = fmm.eigensolve_isotropic_media_from_convolution_matrices(
 )
 ```
 
-Omitting `tangent_vector` reproduces the direct FFT factorization. A constant
-tangent applies the inverse rule to the normal electric-field component and is
-restricted to straight parallel interfaces. Use a sampled vector formulation
-for spatially varying interface directions. On a skew lattice, the fractional
-stripe direction is not automatically a Cartesian interface direction.
+## Interpreting the factorization choice
 
-Analytic coefficients eliminate rasterization error, but do not provide the
-exact modal method of chapter 10 or eliminate Fourier truncation error.
+Omitting `tangent_vector` reproduces the direct FFT factorization. Supplying a constant tangent applies the inverse rule to the electric-field component normal to the interfaces. This form is appropriate for straight, parallel interfaces; spatially varying interface directions require a sampled vector formulation.
 
-As an independent regression, the analytic inverse-rule path reproduces the
-chapter-10 §10.6 TM grating result. For period and wavelength 1, rod permittivity
-12.96, fill 0.28, thickness `1 / (2*sqrt(2))`, and 45-degree incidence, the
-zeroth reflected-order efficiency converges from 0.94651 with 41 Fourier terms
-to 0.94838 with 81 terms, toward the four-digit published value 0.9487. Total
-propagating flux is conserved. The TE Fourier sequence is substantially slower
-for this discontinuous profile and is not asserted against the published exact-
-modal value; analytic material coefficients do not remove modal truncation error.
+The tangent is a Cartesian direction. On a skew lattice, the direction of a stripe expressed in fractional coordinates is not automatically the Cartesian interface direction, so it must be converted explicitly.
+
+## Validation and convergence
+
+As an independent regression, the analytic inverse-rule path reproduces the chapter-10 §10.6 TM grating result. For period and wavelength 1, rod permittivity 12.96, fill 0.28, thickness `1 / (2*sqrt(2))`, and 45-degree incidence, the zeroth reflected-order efficiency converges from 0.94651 with 41 Fourier terms to 0.94838 with 81 terms, toward the four-digit published value 0.9487. Total propagating flux is conserved.
+
+The TE Fourier sequence is substantially slower for this discontinuous profile and is not asserted against the published exact-modal value. This distinction illustrates the role of the analytic material representation: it removes interface rasterization error, but it does not turn the Fourier-modal calculation into the exact modal method of chapter 10 or eliminate modal truncation error.

@@ -58,14 +58,15 @@ the project or its community.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the fork maintainer, [@matt8s](https://github.com/matt8s), using an
-available private contact method on their profile. Do not post sensitive details
-in public issues. The original upstream contact does not administer this fork. All
-complaints will be reviewed and investigated and will result in a response that
-is deemed necessary and appropriate to the circumstances. The project team is
-obligated to maintain confidentiality with regard to the reporter of an incident.
-Further details of specific enforcement policies may be posted separately.
+Report abusive, harassing, or otherwise unacceptable behavior privately to the
+fork maintainer, [@matt8s](https://github.com/matt8s), using an available private
+contact method on their profile. Do not post sensitive details in public issues.
+
+This community fork is administered independently; contacts for the original
+upstream project do not administer it. Reports will be reviewed in confidence,
+and the project will maintain confidentiality regarding the reporter. The
+project may take whatever response it considers necessary and appropriate to
+the circumstances.
 
 Project maintainers who do not follow or enforce the Code of Conduct in good
 faith may face temporary or permanent repercussions as determined by other

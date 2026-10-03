@@ -1,4 +1,4 @@
-"""Functions related transforming to and from the Fourier basis.
+"""Functions for transforming to and from the Fourier basis.
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
