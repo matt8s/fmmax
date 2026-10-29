@@ -214,6 +214,10 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
     def test_layer_fields_on_coordinates_match_fields_on_grid(self, batch_shape):
         in_plane_wavevector = jnp.zeros((2,))
         primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
+        # Reciprocal vectors must retain the suite's double precision even if
+        # another test module imported the shared lattice vectors first.
+        self.assertEqual(primitive_lattice_vectors.reciprocal.u.dtype, jnp.float64)
+        self.assertEqual(primitive_lattice_vectors.reciprocal.v.dtype, jnp.float64)
         expansion = basis.generate_expansion(
             primitive_lattice_vectors=primitive_lattice_vectors,
             approximate_num_terms=10,

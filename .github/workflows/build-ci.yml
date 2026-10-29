@@ -184,7 +184,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          # Use the Intel pool while hosted arm64 capacity is constrained.
+          - os: macos-15-intel
             python-version: "3.12"
             installer: pip
           - os: windows-latest
